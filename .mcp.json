@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "agy-usage": {
+      "command": "node",
+      "args": ["./src/mcp/server.js"],
+      "env": {
+        "AGY_USAGE_PORT": "8766"
+      }
+    }
+  }
+}

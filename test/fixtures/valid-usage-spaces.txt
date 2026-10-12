@@ -1,0 +1,5 @@
+Quota:
+Gemini Models          Weekly Limit Remaining     83%   2026-10-15 16:29 CST
+Gemini Models          Five Hour Limit Remaining  70%   2026-10-13 02:56 CST
+Claude and GPT models  Weekly Limit Remaining     48%   2026-10-15 18:24 CST
+Claude and GPT models  Five Hour Limit Remaining  100%  2026-10-13 04:35 CST

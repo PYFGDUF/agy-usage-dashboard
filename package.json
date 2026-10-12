@@ -1,0 +1,20 @@
+{
+  "name": "agy-usage-dashboard",
+  "version": "1.0.0",
+  "description": "Local Antigravity quota dashboard and MCP plugin for Codex",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "mcp": "node src/mcp/server.js",
+    "test": "node --test test/**/*.test.js",
+    "verify": "node scripts/verify.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "private": true
+}

@@ -1,0 +1,7 @@
+{
+  "name": "agy-usage-dashboard",
+  "version": "1.0.0",
+  "description": "Antigravity 本地配额实时监控看板与 MCP 工具集成插件",
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}
