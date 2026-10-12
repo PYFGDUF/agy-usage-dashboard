@@ -44,6 +44,7 @@ description: Antigravity 配额查询与 Supervisor 任务生命周期事件上�
 返回本地可视化监控看板地址及服务状态：
 - 默认服务地址：`http://127.0.0.1:8766`
 - 可在浏览器中实时查看深色 Graphite 配额图表与倒计时。
+- 在 Codex 中展示时，取得工具返回的 URL 后，优先调用 `mcp__codex_app__open_in_codex`，使用 `target: {type: "browser", url: "返回的URL"}` 和 `placement: "right"` 打开右侧面板。若此工具不可用，返回可点击的本地网址。
 
 ### 3. `agy_supervisor_event`
 上报显式任务生命周期状态：

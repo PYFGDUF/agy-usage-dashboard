@@ -9,7 +9,7 @@ Antigravity (AGY) 本地配额实时监控看板与 MCP 工具集成插件。面
 1. **真实 CLI 配额探测，零 Token 消耗**:
    - 绝不通过模型提示词推算配额；直接调用底层 `agy --print /usage --print-timeout 15s` 查询。
    - 完整支持 Weekly 与 5-Hour 周期窗口，精准处理 0% 余量边界状态与 CST / UTC 重置时间。
-   - 共享缓存机制：内置 10 秒防抖冷却时间，实际执行间隔 ≥ 30 秒（默认 60 秒），并发请求自动复用同一个 Promise 避免重复执行。
+   - 共享缓存机制：后台每 60 秒查询额度，普通查询至少间隔 30 秒，手动刷新至少间隔 10 秒。界面每 2 秒读取缓存，并发刷新复用同一个请求。
    - 容错保全：在进程超时或返回异常时，保留上一次成功的有效窗口数据，标记 `stale: true` 并返回清洗后的诊断信息。
 
 2. **Loopback 专属与全方位安全加固**:
@@ -47,7 +47,7 @@ Antigravity (AGY) 本地配额实时监控看板与 MCP 工具集成插件。面
 
 ### 1. 安装依赖
 ```bash
-npm install --no-audit --no-fund
+npm ci --no-audit --no-fund
 ```
 > 注：已在 `package.json` 与 `package-lock.json` 中将 `@modelcontextprotocol/sdk` 精确锁定为 `1.32.1`。
 
@@ -75,7 +75,21 @@ npm run verify
 
 ## 🔌 Codex / MCP 客户端注册
 
-### 方式一：使用 Codex 命令行添加
+### 安装为本地 Codex 插件
+
+先在项目目录运行上面的 `npm ci`，然后执行：
+
+```bash
+codex plugin marketplace add "$PWD"
+codex plugin add agy-usage-dashboard@agy-usage-local
+codex plugin list --json
+```
+
+本地目录包含 `.agents/plugins/marketplace.json`，插件安装后同时提供 MCP 和 `agy-usage` 技能。与 AGY Supervisor 一起使用时，先查询额度，再按原有权限与工作区约定委派任务；通过 `agy_supervisor_event` 上报起止状态和 CLI 返回的 Token 数。任务列表仅显示收到的报告，表中的时间也是上报时间。
+
+在 Codex 聊天中说“打开 AGY 用量面板”，智能体可用 `agy_dashboard_open` 取得地址，再通过 Codex 的浏览器面板展示。直接访问 `http://127.0.0.1:8766` 也可以。已有插件安装时无需再单独添加同名全局 MCP。
+
+### 仅接入 MCP：使用 Codex 命令行添加
 Codex 支持直接通过命令行注册 MCP 服务（推荐使用绝对路径）：
 ```bash
 codex mcp add agy-usage -- "<Node绝对路径>" "<插件绝对路径>/src/mcp/server.js"

@@ -91,6 +91,8 @@ if (shouldApply) {
     console.log('✅ 已成功通过 Codex CLI 注册 agy-usage MCP 服务！');
   } else {
     console.error(`⚠️ Codex CLI 注册退出码: ${res.status}。请确认 codex 命令已安装且可用。`);
+    if (res.error) console.error(res.error.message);
+    process.exitCode = res.status || 1;
   }
 } else {
   console.log('💡 默认仅执行干运行 (dry-run)，未修改任何本地文件或全局配置。');

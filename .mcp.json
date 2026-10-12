@@ -3,6 +3,7 @@
     "agy-usage": {
       "command": "node",
       "args": ["./src/mcp/server.js"],
+      "cwd": ".",
       "env": {
         "AGY_USAGE_PORT": "8766"
       }
