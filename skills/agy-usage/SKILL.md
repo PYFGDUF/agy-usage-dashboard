@@ -10,7 +10,7 @@ description: Antigravity 配额查询、原生 GUI 面板展示与 Supervisor �
 ## 核心理念
 
 1. **原生插件面板与全局侧边栏优先 (Native Plugin Panel / Sidebar)**:
-   当用户需要查看用量面板或可视化监控时，调用 `agy_usage_panel` 或引导用户使用原生界面（侧边栏 / 对话卡片）。
+   当用户需要查看用量面板或可视化监控时，调用 `agy_usage_panel` 或引导用户使用原生界面（侧边栏 / 聊天右侧面板）。
    **严禁自动在外部浏览器中弹窗或打开网址**。原生 GUI 组件通过 MCP Apps 桥接在 Codex 宿主中直接渲染。
 2. **委派前先查配额 (Quota-Before-Delegation)**:
    在准备执行复杂规划、大批文件修改或派发耗量大的子任务前，先调用只读工具 `agy_usage_get` 获取当前限额剩余情况。
@@ -25,7 +25,7 @@ description: Antigravity 配额查询、原生 GUI 面板展示与 Supervisor �
 ## 常用工具
 
 ### 1. `agy_usage_panel`
-展示 Antigravity 用量与配额原生 GUI 监控面板（支持全局侧边栏与对话卡片）：
+展示 Antigravity 用量与配额原生 GUI 监控面板（支持全局侧边栏与聊天右侧面板）：
 - 返回数据：当前配额状态结构化数据与精简中文摘要。
 - 绑定元数据：`_meta.ui.resourceUri = "ui://agy-usage/panel.html"`，支持 global 与 thread 入口。
 - 适用场景：用户要求“打开用量面板”、“查看 AGY 用量”或需要原生界面交互时调用。
@@ -100,7 +100,7 @@ description: Antigravity 配额查询、原生 GUI 面板展示与 Supervisor �
 ## 规范与限制
 
 1. **原生组件优先**:
-   Codex 已支持 MCP 原生 Apps 与 UI 资源，优先使用 `agy_usage_panel` 提供原生界面，避免频繁弹出外部浏览器。
+   在支持 MCP Apps 与 UI 资源的 Codex 客户端中，优先使用 `agy_usage_panel` 提供原生界面，避免频繁弹出外部浏览器。
 2. **模型名称保留**:
    系统默认模型固定为 `gemini-3.8-flash-high`，严禁擅自修改默认模型 ID。
 3. **切勿根据 Token 计数推断配额**:

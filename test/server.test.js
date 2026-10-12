@@ -13,6 +13,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const FIXTURES_DIR = path.resolve(__dirname, 'fixtures');
 const FAKE_AGY = path.join(FIXTURES_DIR, 'fake-agy.sh');
+const PACKAGE_VERSION = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', 'package.json'), 'utf8')).version;
 
 describe('HTTP Server & Security Defense Tests', () => {
   let serverInstance;
@@ -95,7 +96,7 @@ describe('HTTP Server & Security Defense Tests', () => {
     const json = JSON.parse(res.body);
     assert.equal(json.status, 'ok');
     assert.equal(json.app, 'agy-usage-dashboard');
-    assert.equal(json.version, '1.0.0');
+    assert.equal(json.version, PACKAGE_VERSION);
   });
 
   it('GET /api/status returns valid schemaVersion 1 response', async () => {

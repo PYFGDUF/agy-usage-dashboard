@@ -8,10 +8,10 @@ Antigravity (AGY) 本地配额实时监控看板、原生 GUI 面板组件与 MC
 
 1. **Codex 原生 GUI 组件 (MCP Apps 原生集成)**:
    - 提供标准 MCP Apps UI 资源 `ui://agy-usage/panel.html`（MIME: `text/html;profile=mcp-app`）。
-   - 声明 `openai/ui` 全局入口（`global` 侧边栏）与对话入口（`thread` 对话卡片），用户可在 Codex 客户端中直接唤起原生面板。
+   - 声明 `openai/ui` 全局入口（`global` 侧边栏）与对话入口（`thread` 聊天右侧面板），用户可在 Codex 客户端中直接唤起原生面板。
    - 基于标准 JSON-RPC 2.0 `window.parent.postMessage` 桥接协议（`ui/initialize` 握手与 `tools/call` 数据加载），自适应宿主深色/浅色主题。
    - 严格安全隔离：纯原生自包含 HTML/CSS/JS，零外部 CDN，零外部脚本，无任何 `fetch` 或 `localhost` 网络请求，CSP 域名列表完全清空。
-   - 动态尺寸上报与防抖循环保护，完美自适应 320px 窄边栏至全屏。
+   - 动态尺寸上报与防抖循环保护，为 320px 窄面板至全屏提供响应式布局。
 
 2. **真实 CLI 配额探测，零 Token 消耗**:
    - 绝不通过模型提示词推算配额；直接调用底层 `agy --print /usage --print-timeout 15s` 查询。
@@ -36,7 +36,7 @@ Antigravity (AGY) 本地配额实时监控看板、原生 GUI 面板组件与 MC
 
 | 工具名称 | 功能描述 | 参数说明 | 访问模式 |
 | :--- | :--- | :--- | :--- |
-| `agy_usage_panel` | 唤起/展示原生 AGY 用量监控面板（全局侧边栏/对话卡片） | 无 | 原生 GUI 入口 (只读) |
+| `agy_usage_panel` | 唤起/展示原生 AGY 用量监控面板（全局侧边栏/聊天右侧面板） | 无 | 原生 GUI 入口 (只读) |
 | `agy_usage_get` | 获取当前配额余量及倒计时（只读查询，供模型与原生组件桥接） | `force_refresh` (boolean, 可选, 默认 false) | 只读配额查询 |
 | `agy_dashboard_open` | 获取看板地址及本地连接状态（仅作开发与浏览器回退） | 无 | 只读状态查询 |
 | `agy_supervisor_event` | 记录显式任务执行状态与 Token | `id` (string), `model` (string), `status` (enum), `usage` (object) | 事件写入 |
@@ -86,9 +86,11 @@ codex plugin list --json
 ```
 
 本地目录包含 `.agents/plugins/marketplace.json`，插件安装后同时提供 MCP 和 `agy-usage` 技能：
-- **原生用量面板**：Codex 可直接在全局侧边栏或对话卡片中渲染 `AGY 用量` 原生 GUI 组件（`ui://agy-usage/panel.html`）。
+- **内嵌用量面板**：在支持 MCP Apps 的 Codex 客户端中，从左侧栏的插件入口，或聊天右侧新标签页的「Plugins and MCPs / 插件与 MCP」菜单打开「AGY 用量」。组件由 MCP 资源加载，刷新通过宿主调用数据工具，不需要浏览器网址。
 - **任务协同**：与 AGY Supervisor 一起使用时，先查询额度，再按原有权限与工作区约定委派任务；通过 `agy_supervisor_event` 上报起止状态和 CLI 返回的 Token 数。
 - **浏览器回退**：仅当用户明确要求在浏览器查看时，智能体才调用 `agy_dashboard_open` 提供本地环回地址。
+
+也可以尝试插件深链接：[打开 AGY 用量](codex://plugins/agy-usage-dashboard@agy-usage-local/app/agy_usage_panel)。入口未出现时，重新载入聊天或重启客户端后检查插件是否启用。
 
 ### 仅接入 MCP：使用 Codex 命令行添加
 Codex 支持直接通过命令行注册 MCP 服务（推荐使用绝对路径）：

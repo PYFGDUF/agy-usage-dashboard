@@ -40,3 +40,26 @@ The first implementation returned exit 0, a usable report, no denied_actions. In
 - Evidence image: artifacts/dashboard.jpg (ignored local artifact, actual live dashboard).
 
 The working AGY branch/worktree are retained because its final report was unknown even though the code was independently accepted. No Windows runtime claim or public publication is made.
+
+## Native GUI extension task (2026-10-13)
+
+User clarified that a browser tab does not satisfy the requirement. New bounded task: MCP Apps resource, local global/sidebar and thread/panel entrypoints, UI tools/call reads without model turns or direct browser HTTP fetch.
+
+Client compatibility evidence: official plugin extension docs expose _meta.ui.resourceUri and openai/ui global/thread entrypoints. Read-only inspection of the installed app's bundled discovery code confirms local server/pluginId paths, local Codex thread panel support, text/html;profile=mcp-app resources, and UI bridge tools/call. No app binary or feature flag was modified.
+
+Same previously authorized .worktrees/agy-implementation was clean and fast-forwarded to reviewed parent + new plan. New task initial job e38405bf57184e518edc1635f264c67c exited1 before implementation because sandbox blocked ephemeral localhost bind. Correction1 job a991a368e6aa43448fefab2cd1b47d13 runs in the authorized worktree with the same model/permission scope and host execution approved by auto-review. At most one remaining AGY correction.
+
+Native app computer automation was denied for com.openai.codex. This prevents automated clicks on the Codex sidebar; it does not justify app UI scripting, binary patching or a false visual acceptance claim. The MCP Apps browser surface remains available for an opened widget. Final installation and native display are pending.
+
+Correction1 returned exit0 with usable report, no permission errors. Reported34 tests and SDK smoke passed. Independent runtime node:vm probe identified protocol defects not covered by string assertions: direct tool-result notification failed to render0%; standard ui/resource-teardown request received no acknowledgement and left3timers. Code was not accepted as GUI-ready.
+
+Final correction2 job023ca09e4bab4c3cbe46123d857bcfaa: same worktree/permission/model/ownership, targeted to src/ui/panel.html and test/native-ui.test.js. Correct notification shapes, independent request correlation, graceful teardown, connection-error visibility, refresh states, and resize behavior. Meaningful runtime bridge tests required. No fourth native-GUI delegation permitted.
+
+## Native extension implementation and installation result
+
+- Final AGY correction returned completed/exit0 with usable report and no denied actions. Runtime probe independently returned true/true/0 for standard0% notification, teardown acknowledgement and remaining timers. Audited only7 allowed implementation paths; committed4f994ff and fast-forwarded main. Worktree retained. No fourth call.
+- Root version bumped to1.1.0. The first root verification found one prior hard-coded health test expecting1.0.0. Changed that assertion to package.json's declared version, then final npm run verify independently passed40 tests plus isolated stdio MCP smoke.
+- Installed1.1.0 via codex plugin add agy-usage-dashboard@agy-usage-local. codex mcp list resolves agy-usage cwd to installed cache1.1.0, enabled=true.
+- From /tmp, an SDK client connected to the installed cache itself: serverVersion1.1.0, ui://agy-usage/panel.html MIME text/html;profile=mcp-app, both global/thread entrypoints, self-contained38449-byte UI, real4 quota windows and5 Supervisor events. Snapshot 2026-10-13 01:14 CST: Gemini weekly78%, five-hour36%; Claude/GPT weekly48%, five-hour100%, ready/error=null. This changes over time.
+- Actual Codex main-sidebar clicking remains unavailable to computer automation. Asked user to open AGY 用量 in right-side Plugins and MCPs / More tools or left plugin entry. Current chat's tool catalog still lists the old3 tools until host reload; actual GUI visibility, theme/responsive rendering and native controls have not yet been visually verified. These are pending, not inferred from protocol tests or prior browser screenshot.
+- Source and metadata use standard MCP Apps. Browser URL remains only an explicit development fallback, no automatic browser opening; no host binary patch or global Supervisor configuration changed.

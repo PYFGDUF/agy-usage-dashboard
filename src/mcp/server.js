@@ -256,7 +256,7 @@ export function createMcpServer() {
         {
           name: 'agy_usage_panel',
           title: 'AGY 用量',
-          description: '展示 Antigravity 用量与配额原生 GUI 监控面板（支持全局侧边栏与对话内卡片）',
+          description: '展示 Antigravity 用量与配额原生 GUI 监控面板（支持全局侧边栏与聊天右侧面板）',
           inputSchema: {
             type: 'object',
             properties: {}

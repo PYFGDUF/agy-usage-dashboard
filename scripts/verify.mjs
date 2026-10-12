@@ -44,6 +44,8 @@ const requiredFiles = [
   'src/parser.js',
   'src/task-store.js',
   'src/mcp/server.js',
+  'src/ui/panel.html',
+  'test/native-ui.test.js',
   'public/index.html',
   'public/style.css',
   'public/app.js',
@@ -67,6 +69,10 @@ try {
     console.log('  ✅ .codex-plugin/plugin.json 包含标准兼容字段: skills="./skills/", mcpServers="./.mcp.json"');
   } else {
     console.error('  ❌ .codex-plugin/plugin.json 格式不符合标准要求');
+    hasErrors = true;
+  }
+  if (pluginJson.version !== pkg.version) {
+    console.error('  ❌ 插件与 npm 包版本不一致');
     hasErrors = true;
   }
   if (!pluginJson.entry && !pluginJson.capabilities) {
