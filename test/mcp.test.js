@@ -63,6 +63,7 @@ describe('MCP Server Integration Tests', () => {
       // 1. List tools and assert annotations
       const { tools } = await client.listTools();
       const toolNames = tools.map(t => t.name);
+      assert.ok(toolNames.includes('agy_usage_panel'));
       assert.ok(toolNames.includes('agy_usage_get'));
       assert.ok(toolNames.includes('agy_dashboard_open'));
       assert.ok(toolNames.includes('agy_supervisor_event'));

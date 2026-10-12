@@ -81,15 +81,39 @@ async function runSmokeTest() {
     const toolNames = tools.map(t => t.name);
     console.log('✅ 获取可用工具列表:', toolNames.join(', '));
 
+    assert.ok(toolNames.includes('agy_usage_panel'), '缺少 agy_usage_panel 工具');
     assert.ok(toolNames.includes('agy_usage_get'), '缺少 agy_usage_get 工具');
     assert.ok(toolNames.includes('agy_dashboard_open'), '缺少 agy_dashboard_open 工具');
     assert.ok(toolNames.includes('agy_supervisor_event'), '缺少 agy_supervisor_event 工具');
+
+    const panelTool = tools.find(t => t.name === 'agy_usage_panel');
+    assert.ok(panelTool.annotations, 'agy_usage_panel 应包含 annotations');
+    assert.equal(panelTool.annotations.readOnlyHint, true);
+    assert.equal(panelTool._meta?.ui?.resourceUri, 'ui://agy-usage/panel.html');
 
     const usageTool = tools.find(t => t.name === 'agy_usage_get');
     assert.ok(usageTool.annotations, 'agy_usage_get 应包含 annotations');
     assert.equal(usageTool.annotations.readOnlyHint, true);
 
-    // 2. Call agy_dashboard_open
+    // 2. Verify resources capability & reading ui://agy-usage/panel.html
+    const { resources } = await client.listResources();
+    const resUris = resources.map(r => r.uri);
+    assert.ok(resUris.includes('ui://agy-usage/panel.html'), '缺少 ui://agy-usage/panel.html 资源');
+    const panelResource = await client.readResource({ uri: 'ui://agy-usage/panel.html' });
+    assert.ok(panelResource.contents && panelResource.contents.length > 0);
+    assert.equal(panelResource.contents[0].mimeType, 'text/html;profile=mcp-app');
+    console.log('✅ 原生 MCP UI 资源校验通过 (ui://agy-usage/panel.html 存在且符合规范)');
+
+    // 3. Call agy_usage_panel
+    const panelResult = await client.callTool({
+      name: 'agy_usage_panel',
+      arguments: {}
+    });
+    assert.ok(!panelResult.isError, 'agy_usage_panel 执行报错');
+    assert.ok(panelResult.structuredContent, '缺少 structuredContent');
+    console.log('✅ agy_usage_panel 校验通过 (结构化配额状态就绪)');
+
+    // 4. Call agy_dashboard_open
     const dashboardResult = await client.callTool({
       name: 'agy_dashboard_open',
       arguments: {}
@@ -99,7 +123,7 @@ async function runSmokeTest() {
     assert.ok(dashboardResult.structuredContent.url.includes(String(testPort)));
     console.log('✅ agy_dashboard_open 校验通过 (结构化 URL 与状态就绪)');
 
-    // 3. Call agy_supervisor_event
+    // 5. Call agy_supervisor_event
     const eventResult = await client.callTool({
       name: 'agy_supervisor_event',
       arguments: {
@@ -117,7 +141,7 @@ async function runSmokeTest() {
     assert.equal(eventResult.structuredContent.usage.inputTokens, 450);
     console.log('✅ agy_supervisor_event 校验通过 (显式任务结构化断言成功)');
 
-    // 4. Call agy_usage_get
+    // 6. Call agy_usage_get
     const usageResult = await client.callTool({
       name: 'agy_usage_get',
       arguments: {

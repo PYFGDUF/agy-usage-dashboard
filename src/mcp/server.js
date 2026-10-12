@@ -1,4 +1,5 @@
 import http from 'node:http';
+import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,7 +7,9 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema
+  ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema
 } from '@modelcontextprotocol/sdk/types.js';
 import {
   APP_ID,
@@ -19,6 +22,11 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SERVER_PATH = path.resolve(__dirname, '..', 'server.js');
+const UI_PANEL_PATH = path.resolve(__dirname, '..', 'ui', 'panel.html');
+
+function getPanelHtml() {
+  return fs.readFileSync(UI_PANEL_PATH, 'utf8');
+}
 
 const PORT = parseInt(process.env.AGY_USAGE_PORT || process.env.PORT || `${DEFAULT_PORT}`, 10);
 const BASE_URL = `http://${HOST}:${PORT}`;
@@ -190,14 +198,87 @@ export function createMcpServer() {
     },
     {
       capabilities: {
-        tools: {}
+        tools: {},
+        resources: {}
       }
     }
   );
 
+  server.setRequestHandler(ListResourcesRequestSchema, async () => {
+    return {
+      resources: [
+        {
+          uri: 'ui://agy-usage/panel.html',
+          name: 'AGY 用量',
+          description: 'Antigravity 用量与配额原生 GUI 监控面板',
+          mimeType: 'text/html;profile=mcp-app',
+          _meta: {
+            ui: {
+              csp: {
+                connectDomains: [],
+                resourceDomains: []
+              }
+            }
+          }
+        }
+      ]
+    };
+  });
+
+  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+    const { uri } = request.params;
+    if (uri !== 'ui://agy-usage/panel.html') {
+      throw new Error(`Resource not found: ${uri}`);
+    }
+
+    return {
+      contents: [
+        {
+          uri: 'ui://agy-usage/panel.html',
+          mimeType: 'text/html;profile=mcp-app',
+          text: getPanelHtml(),
+          _meta: {
+            ui: {
+              csp: {
+                connectDomains: [],
+                resourceDomains: []
+              }
+            }
+          }
+        }
+      ]
+    };
+  });
+
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
       tools: [
+        {
+          name: 'agy_usage_panel',
+          title: 'AGY 用量',
+          description: '展示 Antigravity 用量与配额原生 GUI 监控面板（支持全局侧边栏与对话内卡片）',
+          inputSchema: {
+            type: 'object',
+            properties: {}
+          },
+          annotations: {
+            title: 'AGY 用量',
+            readOnlyHint: true,
+            idempotentHint: true
+          },
+          _meta: {
+            ui: {
+              resourceUri: 'ui://agy-usage/panel.html'
+            },
+            'openai/ui': {
+              entrypoints: [
+                { type: 'global' },
+                { type: 'thread' }
+              ]
+            },
+            'openai/widgetAccessible': true
+          }
+        },
         {
           name: 'agy_usage_get',
           description: '获取当前 Antigravity 配额使用情况及重置倒计时（支持强制刷新，只读配额查询）',
@@ -215,11 +296,16 @@ export function createMcpServer() {
             title: 'AGY Quota Query',
             readOnlyHint: true,
             idempotentHint: true
+          },
+          _meta: {
+            ui: {
+              visibility: ['model', 'app']
+            }
           }
         },
         {
           name: 'agy_dashboard_open',
-          description: '获取本地 AGY 配额监控看板 URL 及当前连接与服务状态',
+          description: '获取本地 AGY 配额监控看板 URL 及当前连接与服务状态（仅作开发或浏览器回退使用）',
           inputSchema: {
             type: 'object',
             properties: {}
@@ -276,7 +362,7 @@ export function createMcpServer() {
     const { name, arguments: args = {} } = request.params;
 
     // 1. Validate unknown tool BEFORE spawning or touching service
-    const KNOWN_TOOLS = new Set(['agy_usage_get', 'agy_dashboard_open', 'agy_supervisor_event']);
+    const KNOWN_TOOLS = new Set(['agy_usage_panel', 'agy_usage_get', 'agy_dashboard_open', 'agy_supervisor_event']);
     if (!KNOWN_TOOLS.has(name)) {
       return {
         isError: true,
@@ -354,6 +440,68 @@ export function createMcpServer() {
 
     try {
       await ensureServerRunning();
+
+      if (name === 'agy_usage_panel') {
+        let status = await apiRequest('GET', '/api/status');
+
+        // If initial refresh on startup is pending and windows are not yet populated, boundedly join
+        if (status.connection?.state === 'refreshing' && (!status.usage?.windows || status.usage.windows.length === 0)) {
+          const startTime = Date.now();
+          const maxWaitMs = 12000;
+          while (Date.now() - startTime < maxWaitMs) {
+            await new Promise(r => setTimeout(r, 250));
+            status = await apiRequest('GET', '/api/status');
+            if (status.connection?.state !== 'refreshing' || (status.usage?.windows && status.usage.windows.length > 0)) {
+              break;
+            }
+          }
+        }
+
+        const windows = status.usage?.windows || [];
+        const isStale = status.usage?.stale;
+        const updatedAtCst = formatShanghaiTime(status.usage?.updatedAt);
+        const connState = status.connection?.state || 'unknown';
+
+        let text = `### 📊 AGY 用量监控面板\n\n`;
+        text += `- **连接状态**: \`${connState}\`${isStale ? ' (⚠️ 数据已过期 >120s)' : ' (实时)'}\n`;
+        text += `- **更新时间**: ${updatedAtCst}\n\n`;
+
+        if (windows.length === 0) {
+          text += `*暂无配额窗口数据*\n`;
+        } else {
+          text += `| 模型分组 | 配额窗口 | 剩余百分比 | 重置时间 (北京时间) | 倒计时 |\n`;
+          text += `| :--- | :--- | :--- | :--- | :--- |\n`;
+
+          const lowWarnings = [];
+          for (const win of windows) {
+            const percentStr = `${win.remainingPercent}%`;
+            const resetCst = formatShanghaiTime(win.resetsAt);
+            const countdown = formatCountdown(win.resetsAt);
+            const isLow = win.remainingPercent <= 20;
+
+            if (isLow) {
+              lowWarnings.push(`- ⚠️ **${win.group} - ${win.window}**: 仅剩 **${percentStr}** (${countdown})`);
+            }
+
+            text += `| ${win.group} | ${win.window} | **${percentStr}** | ${resetCst} | ${countdown} |\n`;
+          }
+
+          if (lowWarnings.length > 0) {
+            text += `\n> [!WARNING] **配额紧张预警 (≤20%)**:\n`;
+            text += lowWarnings.join('\n') + '\n';
+          }
+        }
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text
+            }
+          ],
+          structuredContent: status
+        };
+      }
 
       if (name === 'agy_usage_get') {
         const forceRefresh = args.force_refresh === true;

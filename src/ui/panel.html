@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AGY 用量面板</title>
+  <style>
+    :root {
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --transition-fast: 0.15s ease;
+    }
+
+    /* Dark Graphite (Default) */
+    html[data-theme="dark"], body[data-theme="dark"] {
+      --bg-primary: #0c0e14;
+      --bg-surface: #141722;
+      --bg-surface-elevated: #1c202e;
+      --bg-surface-hover: #23283a;
+      --border-subtle: #242938;
+      --border-strong: #363c50;
+
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      --color-cyan: #06b6d4;
+      --color-cyan-glow: rgba(6, 182, 212, 0.25);
+      --color-lime: #84cc16;
+      --color-lime-glow: rgba(132, 204, 22, 0.25);
+      --color-amber: #f59e0b;
+      --color-amber-glow: rgba(245, 158, 11, 0.25);
+      --color-red: #ef4444;
+      --color-red-glow: rgba(239, 68, 68, 0.25);
+      --track-bg: #1e2433;
+    }
+
+    /* Host Light Theme Adaptation */
+    html[data-theme="light"], body[data-theme="light"] {
+      --bg-primary: #f8fafc;
+      --bg-surface: #ffffff;
+      --bg-surface-elevated: #f1f5f9;
+      --bg-surface-hover: #e2e8f0;
+      --border-subtle: #e2e8f0;
+      --border-strong: #cbd5e1;
+
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+
+      --color-cyan: #0891b2;
+      --color-cyan-glow: rgba(8, 145, 178, 0.15);
+      --color-lime: #65a30d;
+      --color-lime-glow: rgba(101, 163, 13, 0.15);
+      --color-amber: #d97706;
+      --color-amber-glow: rgba(217, 119, 6, 0.15);
+      --color-red: #dc2626;
+      --color-red-glow: rgba(220, 38, 38, 0.15);
+      --track-bg: #e2e8f0;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 13px;
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 12px;
+    }
+
+    .app-root {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Header Bar */
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 10px 14px;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .brand-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .brand-accent {
+      color: var(--color-cyan);
+    }
+
+    .header-status-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .badge-ready {
+      background-color: rgba(6, 182, 212, 0.12);
+      color: var(--color-cyan);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+    }
+    .badge-ready .badge-dot { background-color: var(--color-cyan); }
+
+    .badge-refreshing {
+      background-color: rgba(245, 158, 11, 0.12);
+      color: var(--color-amber);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+    }
+    .badge-refreshing .badge-dot { background-color: var(--color-amber); }
+
+    .badge-error {
+      background-color: rgba(239, 68, 68, 0.12);
+      color: var(--color-red);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+    }
+    .badge-error .badge-dot { background-color: var(--color-red); }
+
+    .badge-stale {
+      background-color: rgba(245, 158, 11, 0.15);
+      color: var(--color-amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .toggle-wrap input {
+      accent-color: var(--color-cyan);
+      cursor: pointer;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid var(--border-subtle);
+      background-color: var(--bg-surface-elevated);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: background-color var(--transition-fast), border-color var(--transition-fast);
+    }
+
+    .btn:hover:not(:disabled) {
+      background-color: var(--bg-surface-hover);
+      border-color: var(--border-strong);
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-icon {
+      font-size: 12px;
+    }
+
+    /* Warning & Error Banner */
+    .banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+    }
+
+    .banner-error {
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--color-red);
+    }
+
+    .banner-stale {
+      background-color: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: var(--color-amber);
+    }
+
+    .banner-close {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    /* Quota Grid */
+    .quota-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 10px;
+    }
+
+    .card {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .card-subtitle {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .quota-items {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .quota-item {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .quota-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 12px;
+    }
+
+    .window-label {
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .percent-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .low-warning-tag {
+      background-color: rgba(239, 68, 68, 0.15);
+      color: var(--color-red);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 1px 5px;
+      border-radius: var(--radius-sm);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .percent-val {
+      font-weight: 700;
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text-primary);
+    }
+
+    .quota-item.is-low .percent-val {
+      color: var(--color-red);
+    }
+
+    /* Progress bar */
+    .progress-track {
+      width: 100%;
+      height: 7px;
+      background-color: var(--track-bg);
+      border-radius: 9999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, var(--color-cyan), var(--color-lime));
+      transition: width 0.3s ease;
+    }
+
+    .quota-item.is-low .progress-fill {
+      background: linear-gradient(90deg, var(--color-amber), var(--color-red));
+    }
+
+    .quota-sub-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .countdown-text.is-passed {
+      color: var(--color-amber);
+      font-weight: 500;
+    }
+
+    /* Tasks Section */
+    .tasks-section {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tasks-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .tasks-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tasks-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .tasks-count-pill {
+      background-color: var(--bg-surface-elevated);
+      color: var(--color-cyan);
+      border: 1px solid var(--border-subtle);
+      padding: 1px 6px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .tasks-note {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .tasks-table-wrap {
+      overflow-x: auto;
+      max-height: 220px;
+    }
+
+    table.tasks-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      text-align: left;
+    }
+
+    table.tasks-table th {
+      padding: 6px 8px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-subtle);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    table.tasks-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .task-id {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .status-tag {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: var(--radius-sm);
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .status-tag.running {
+      background-color: rgba(6, 182, 212, 0.15);
+      color: var(--color-cyan);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .status-tag.completed {
+      background-color: rgba(132, 204, 22, 0.15);
+      color: var(--color-lime);
+      border: 1px solid rgba(132, 204, 22, 0.3);
+    }
+
+    .status-tag.failed {
+      background-color: rgba(239, 68, 68, 0.15);
+      color: var(--color-red);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .status-tag.queued {
+      background-color: rgba(245, 158, 11, 0.15);
+      color: var(--color-amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .status-tag.unknown {
+      background-color: rgba(100, 116, 139, 0.15);
+      color: var(--text-muted);
+      border: 1px solid rgba(100, 116, 139, 0.3);
+    }
+
+    .tasks-empty {
+      padding: 16px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    .footer-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 0 4px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="app-root" class="app-root">
+    <!-- Header -->
+    <header class="panel-header">
+      <div class="header-left">
+        <div class="brand-title">
+          <span>AGY</span><span class="brand-accent">/</span><span>用量监控</span>
+        </div>
+        <div class="header-status-group">
+          <div id="conn-badge" class="badge badge-ready">
+            <span class="badge-dot"></span>
+            <span id="conn-text">准备连接...</span>
+          </div>
+          <div id="stale-badge" class="badge badge-stale hidden">数据已过期 (>120s)</div>
+        </div>
+      </div>
+      <div class="header-controls">
+        <label class="toggle-wrap" title="每5秒自动拉取缓存数据">
+          <input type="checkbox" id="auto-refresh-toggle" checked>
+          <span>自动同步</span>
+        </label>
+        <button id="refresh-btn" class="btn" title="立即发起配额刷新 (10秒冷却)">
+          <span class="btn-icon">↻</span>
+          <span id="refresh-btn-text">立即刷新</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Error Banner -->
+    <div id="error-banner" class="banner banner-error hidden">
+      <span id="error-message">执行异常</span>
+      <button id="error-dismiss" class="banner-close" title="关闭">&times;</button>
+    </div>
+
+    <!-- Quota Grid -->
+    <main id="quota-grid" class="quota-grid">
+      <div class="card" style="text-align: center; color: var(--text-muted); padding: 30px;">
+        <p>正在读取配额</p>
+      </div>
+    </main>
+
+    <!-- Tasks Section -->
+    <section class="tasks-section">
+      <div class="tasks-header">
+        <div class="tasks-title-wrap">
+          <span class="tasks-title">Supervisor 任务记录</span>
+          <span id="tasks-count" class="tasks-count-pill">0</span>
+        </div>
+        <span class="tasks-note">显式上报记录 · 不自动枚举后台桥接</span>
+      </div>
+      <div id="tasks-empty" class="tasks-empty">
+        暂无显式上报的 Supervisor 任务事件
+      </div>
+      <div id="tasks-table-wrap" class="tasks-table-wrap hidden">
+        <table class="tasks-table">
+          <thead>
+            <tr>
+              <th>任务 ID</th>
+              <th>模型</th>
+              <th>状态</th>
+              <th>Token (入 / 出)</th>
+              <th>上报时间 (CST)</th>
+            </tr>
+          </thead>
+          <tbody id="tasks-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Footer Meta -->
+    <footer class="footer-meta">
+      <span id="updated-at-text">更新时间: -</span>
+      <span>每60秒采集 · 北京时间</span>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // Elements
+      const connBadge = document.getElementById('conn-badge');
+      const connText = document.getElementById('conn-text');
+      const staleBadge = document.getElementById('stale-badge');
+      const refreshBtn = document.getElementById('refresh-btn');
+      const refreshBtnText = document.getElementById('refresh-btn-text');
+      const autoRefreshToggle = document.getElementById('auto-refresh-toggle');
+      const errorBanner = document.getElementById('error-banner');
+      const errorMessage = document.getElementById('error-message');
+      const errorDismiss = document.getElementById('error-dismiss');
+      const quotaGrid = document.getElementById('quota-grid');
+      const tasksCount = document.getElementById('tasks-count');
+      const tasksEmpty = document.getElementById('tasks-empty');
+      const tasksTableWrap = document.getElementById('tasks-table-wrap');
+      const tasksBody = document.getElementById('tasks-body');
+      const updatedAtText = document.getElementById('updated-at-text');
+      const appRoot = document.getElementById('app-root');
+
+      // State
+      let isInitialized = false;
+      let disposed = false;
+      let inFlight = false;
+      let nextRpcId = 1;
+      const pendingRequests = new Map();
+      let pollTimer = null;
+      let cooldownTimer = null;
+      let cooldownSeconds = 0;
+      let countdownTimer = null;
+      let lastReportedWidth = 0;
+      let lastReportedHeight = 0;
+      let resizeDebounce = null;
+      let resizeObserver = null;
+      let lastKnownStatus = null;
+
+      // Escape HTML
+      function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      // Format ISO string to Asia/Shanghai CST
+      function formatShanghaiTime(isoString) {
+        if (!isoString) return '-';
+        try {
+          const d = new Date(isoString);
+          if (isNaN(d.getTime())) return String(isoString);
+          return new Intl.DateTimeFormat('zh-CN', {
+            timeZone: 'Asia/Shanghai',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+          }).format(d) + ' CST';
+        } catch {
+          return String(isoString);
+        }
+      }
+
+      // Format countdown
+      function getCountdownInfo(isoString) {
+        if (!isoString) return { text: '-', isPassed: false };
+        const diffMs = new Date(isoString).getTime() - Date.now();
+        if (diffMs <= 0) {
+          return { text: '已到期 (等待下次刷新)', isPassed: true };
+        }
+        const totalSeconds = Math.floor(diffMs / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const mins = Math.floor((totalSeconds % 3600) / 60);
+        const secs = totalSeconds % 60;
+
+        if (hours >= 24) {
+          const days = Math.floor(hours / 24);
+          const remHours = hours % 24;
+          return { text: `倒计时: ${days}天 ${remHours}小时 ${mins}分`, isPassed: false };
+        }
+        return { text: `倒计时: ${hours}小时 ${mins}分 ${secs}秒`, isPassed: false };
+      }
+
+      function formatWindowLabel(name) {
+        if (!name) return '';
+        const lower = name.toLowerCase();
+        if (lower.includes('weekly') && lower.includes('remaining')) return '每周限额剩余';
+        if ((lower.includes('five hour') || lower.includes('5-hour') || lower.includes('5 hour')) && lower.includes('remaining')) return '5小时限额剩余';
+        if (lower.includes('weekly')) return '每周限额';
+        if (lower.includes('five hour') || lower.includes('5-hour') || lower.includes('5 hour')) return '5小时限额';
+        return name;
+      }
+
+      function formatGroupLabel(name) {
+        if (!name) return '通用模型';
+        const lower = name.toLowerCase();
+        if (lower.includes('gemini')) return 'Gemini 模型';
+        if (lower.includes('claude') || lower.includes('gpt')) return 'Claude 与 GPT 模型';
+        return name;
+      }
+
+      // Apply theme
+      function applyTheme(theme) {
+        if (theme === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+          document.body.setAttribute('data-theme', 'light');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          document.body.setAttribute('data-theme', 'dark');
+        }
+      }
+
+      // Detect system theme preference initially
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        applyTheme('light');
+      }
+
+      // Update manual refresh button UI state
+      function updateRefreshBtnUI() {
+        if (disposed) return;
+        if (inFlight) {
+          refreshBtn.disabled = true;
+          refreshBtnText.textContent = '刷新中...';
+        } else if (cooldownSeconds > 0) {
+          refreshBtn.disabled = true;
+          refreshBtnText.textContent = `冷却中 (${cooldownSeconds}s)`;
+        } else {
+          refreshBtn.disabled = false;
+          refreshBtnText.textContent = '立即刷新';
+        }
+      }
+
+      // Send JSON-RPC request to parent
+      function sendRpcRequest(method, params, timeoutMs = 20000) {
+        if (disposed) {
+          return Promise.reject(new Error('UI resource disposed'));
+        }
+        if (window.parent === window) {
+          return Promise.reject(new Error('未在宿主应用 iframe 中运行'));
+        }
+        const id = nextRpcId++;
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => {
+            pendingRequests.delete(id);
+            reject(new Error(`请求 ${method} 超时 (${timeoutMs}ms)`));
+          }, timeoutMs);
+
+          pendingRequests.set(id, { resolve, reject, timer });
+          window.parent.postMessage({
+            jsonrpc: '2.0',
+            id,
+            method,
+            params
+          }, '*');
+        });
+      }
+
+      // Send JSON-RPC notification to parent
+      function sendRpcNotification(method, params = {}) {
+        if (disposed) return;
+        if (window.parent === window) return;
+        window.parent.postMessage({
+          jsonrpc: '2.0',
+          method,
+          params
+        }, '*');
+      }
+
+      // Notify parent of layout size changes
+      function notifySize() {
+        if (!isInitialized || disposed) return;
+        if (resizeDebounce) clearTimeout(resizeDebounce);
+        resizeDebounce = setTimeout(() => {
+          resizeDebounce = null;
+          if (!isInitialized || disposed) return;
+
+          const docEl = document.documentElement;
+          const body = document.body;
+          // Use actual viewport width to prevent host width shrink loop
+          const w = Math.ceil((docEl && docEl.clientWidth) || window.innerWidth || (appRoot ? appRoot.offsetWidth : 320));
+          // Height includes body padding (12px top + 12px bottom = 24px)
+          const rootScrollHeight = appRoot ? (appRoot.scrollHeight + 24) : 0;
+          const docScrollHeight = docEl ? docEl.scrollHeight : 0;
+          const bodyScrollHeight = body ? body.scrollHeight : 0;
+          const h = Math.ceil(Math.max(rootScrollHeight, docScrollHeight, bodyScrollHeight, 300));
+
+          if (Math.abs(h - lastReportedHeight) >= 4 || Math.abs(w - lastReportedWidth) >= 4) {
+            lastReportedWidth = w;
+            lastReportedHeight = h;
+            sendRpcNotification('ui/notifications/size-changed', { width: w, height: h });
+          }
+        }, 100);
+      }
+
+      // Show/Hide error banner
+      function showError(msg) {
+        if (disposed) return;
+        errorMessage.textContent = msg;
+        errorBanner.classList.remove('hidden');
+        notifySize();
+      }
+
+      function hideError() {
+        if (disposed) return;
+        errorBanner.classList.add('hidden');
+        notifySize();
+      }
+
+      errorDismiss.addEventListener('click', hideError);
+
+      // Render Status Data
+      function renderStatus(status) {
+        if (disposed || !status) return;
+        lastKnownStatus = status;
+
+        // Render connection error as visible banner if present; otherwise hide error banner
+        const connErr = status.connection?.error;
+        if (connErr) {
+          const errText = typeof connErr === 'string'
+            ? connErr
+            : (connErr.message || JSON.stringify(connErr));
+          showError(errText);
+        } else {
+          hideError();
+        }
+
+        // 1. Connection state badge
+        const connState = status.connection?.state || 'ready';
+        connBadge.className = 'badge';
+        if (connState === 'ready') {
+          connBadge.classList.add('badge-ready');
+          connText.textContent = '正常 (就绪)';
+        } else if (connState === 'refreshing') {
+          connBadge.classList.add('badge-refreshing');
+          connText.textContent = '正在刷新...';
+        } else if (connState === 'error') {
+          connBadge.classList.add('badge-error');
+          connText.textContent = '刷新异常';
+        } else {
+          connBadge.classList.add('badge-ready');
+          connText.textContent = connState;
+        }
+
+        // 2. Freshness & Stale (locally > 120s or server reported)
+        const updatedAt = status.usage?.updatedAt;
+        updatedAtText.textContent = `更新时间: ${formatShanghaiTime(updatedAt)}`;
+        const isServerStale = !!status.usage?.stale;
+        const isLocallyStale = updatedAt ? (Date.now() - new Date(updatedAt).getTime() > 120000) : false;
+
+        if (isServerStale || isLocallyStale) {
+          staleBadge.classList.remove('hidden');
+        } else {
+          staleBadge.classList.add('hidden');
+        }
+
+        // 3. Render Quota Windows
+        const windows = status.usage?.windows || [];
+        if (windows.length === 0) {
+          quotaGrid.innerHTML = `
+            <div class="card" style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 30px;">
+              <p>暂无配额窗口数据，可点击右上角「立即刷新」</p>
+            </div>
+          `;
+        } else {
+          // Group by model group
+          const groups = new Map();
+          for (const win of windows) {
+            const g = win.group || '通用模型';
+            if (!groups.has(g)) groups.set(g, []);
+            groups.get(g).push(win);
+          }
+
+          let gridHtml = '';
+          for (const [groupName, winList] of groups.entries()) {
+            let itemsHtml = '';
+            for (const win of winList) {
+              const rawPercent = (typeof win.remainingPercent === 'number') ? win.remainingPercent : 0;
+              const percent = Math.max(0, Math.min(100, rawPercent));
+              const isLow = percent <= 20;
+              const countdown = getCountdownInfo(win.resetsAt);
+              const resetCst = formatShanghaiTime(win.resetsAt);
+              const label = formatWindowLabel(win.window);
+
+              itemsHtml += `
+                <div class="quota-item ${isLow ? 'is-low' : ''}" data-resets-at="${escapeHtml(win.resetsAt || '')}">
+                  <div class="quota-meta-row">
+                    <span class="window-label">${escapeHtml(label)}</span>
+                    <div class="percent-group">
+                      ${isLow ? '<span class="low-warning-tag">额度紧张 ≤20%</span>' : ''}
+                      <span class="percent-val">${percent}%</span>
+                    </div>
+                  </div>
+                  <div class="progress-track" role="progressbar" aria-label="${escapeHtml(label)} 剩余 ${percent}%" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100">
+                    <div class="progress-fill" style="width: ${percent}%;"></div>
+                  </div>
+                  <div class="quota-sub-meta">
+                    <span>重置: ${escapeHtml(resetCst)}</span>
+                    <span class="countdown-text ${countdown.isPassed ? 'is-passed' : ''}">${escapeHtml(countdown.text)}</span>
+                  </div>
+                </div>
+              `;
+            }
+
+            gridHtml += `
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title">${escapeHtml(formatGroupLabel(groupName))}</span>
+                  <span class="card-subtitle">${winList.length} 个配额窗口</span>
+                </div>
+                <div class="quota-items">
+                  ${itemsHtml}
+                </div>
+              </div>
+            `;
+          }
+          quotaGrid.innerHTML = gridHtml;
+        }
+
+        // 4. Render Tasks
+        const tasks = Array.isArray(status.tasks) ? status.tasks : [];
+        tasksCount.textContent = String(tasks.length);
+        if (tasks.length === 0) {
+          tasksEmpty.classList.remove('hidden');
+          tasksTableWrap.classList.add('hidden');
+          tasksBody.innerHTML = '';
+        } else {
+          tasksEmpty.classList.add('hidden');
+          tasksTableWrap.classList.remove('hidden');
+
+          const statusMap = {
+            queued: '排队中',
+            running: '运行中',
+            completed: '已完成',
+            failed: '失败',
+            unknown: '未知'
+          };
+
+          let rowsHtml = '';
+          for (const t of tasks) {
+            const statusClass = ['queued', 'running', 'completed', 'failed'].includes(t.status) ? t.status : 'unknown';
+            const statusLabel = statusMap[t.status] || t.status;
+            let usageText = '-';
+            if (t.usage && (t.usage.inputTokens !== undefined || t.usage.outputTokens !== undefined)) {
+              const inp = t.usage.inputTokens !== undefined ? Number(t.usage.inputTokens).toLocaleString() : '-';
+              const out = t.usage.outputTokens !== undefined ? Number(t.usage.outputTokens).toLocaleString() : '-';
+              usageText = `${inp} / ${out}`;
+            }
+
+            rowsHtml += `
+              <tr>
+                <td><span class="task-id">${escapeHtml(t.id)}</span></td>
+                <td>${escapeHtml(t.model || '-')}</td>
+                <td><span class="status-tag ${statusClass}">${escapeHtml(statusLabel)}</span></td>
+                <td>${escapeHtml(usageText)}</td>
+                <td>${escapeHtml(formatShanghaiTime(t.createdAt || t.updatedAt))}</td>
+              </tr>
+            `;
+          }
+          tasksBody.innerHTML = rowsHtml;
+        }
+
+        notifySize();
+      }
+
+      // Fetch usage via tools/call agy_usage_get
+      async function loadUsage(forceRefresh = false) {
+        if (disposed || !isInitialized || inFlight) return;
+
+        inFlight = true;
+        updateRefreshBtnUI();
+
+        try {
+          const res = await sendRpcRequest('tools/call', {
+            name: 'agy_usage_get',
+            arguments: { force_refresh: forceRefresh }
+          }, 35000);
+
+          if (disposed) return;
+
+          if (res && res.isError) {
+            const errText = res.content?.[0]?.text || '获取配额失败';
+            showError(errText);
+          } else if (res && res.structuredContent) {
+            renderStatus(res.structuredContent);
+          } else if (res && res.content) {
+            showError('工具返回内容缺少 structuredContent');
+          }
+        } catch (err) {
+          if (disposed) return;
+          showError(err.message || '查询失败');
+        } finally {
+          if (!disposed) {
+            inFlight = false;
+            updateRefreshBtnUI();
+          }
+        }
+      }
+
+      // Polling control
+      function startPolling() {
+        stopPolling();
+        if (disposed || !autoRefreshToggle.checked) return;
+        pollTimer = setInterval(() => {
+          if (!disposed && !document.hidden && isInitialized && !inFlight) {
+            loadUsage(false);
+          }
+        }, 5000);
+      }
+
+      function stopPolling() {
+        if (pollTimer) {
+          clearInterval(pollTimer);
+          pollTimer = null;
+        }
+      }
+
+      // Cooldown timer (10s)
+      function startCooldown(sec = 10) {
+        if (disposed) return;
+        cooldownSeconds = sec;
+        updateRefreshBtnUI();
+        if (cooldownTimer) clearInterval(cooldownTimer);
+        cooldownTimer = setInterval(() => {
+          cooldownSeconds--;
+          if (cooldownSeconds <= 0) {
+            clearInterval(cooldownTimer);
+            cooldownTimer = null;
+            cooldownSeconds = 0;
+          }
+          updateRefreshBtnUI();
+        }, 1000);
+      }
+
+      function stopCooldown() {
+        if (cooldownTimer) {
+          clearInterval(cooldownTimer);
+          cooldownTimer = null;
+        }
+        cooldownSeconds = 0;
+      }
+
+      // Dynamic countdowns update every second
+      function startCountdowns() {
+        stopCountdowns();
+        if (disposed) return;
+        countdownTimer = setInterval(() => {
+          if (disposed) return;
+          const items = document.querySelectorAll('.quota-item[data-resets-at]');
+          items.forEach(el => {
+            const resetsAt = el.getAttribute('data-resets-at');
+            const countdownEl = el.querySelector('.countdown-text');
+            if (resetsAt && countdownEl) {
+              const info = getCountdownInfo(resetsAt);
+              countdownEl.textContent = info.text;
+              if (info.isPassed) {
+                countdownEl.classList.add('is-passed');
+              } else {
+                countdownEl.classList.remove('is-passed');
+              }
+            }
+          });
+
+          // Check local staleness
+          if (lastKnownStatus && lastKnownStatus.usage?.updatedAt) {
+            const isOld = Date.now() - new Date(lastKnownStatus.usage.updatedAt).getTime() > 120000;
+            if (isOld || lastKnownStatus.usage.stale) {
+              staleBadge.classList.remove('hidden');
+            } else {
+              staleBadge.classList.add('hidden');
+            }
+          }
+        }, 1000);
+      }
+
+      function stopCountdowns() {
+        if (countdownTimer) {
+          clearInterval(countdownTimer);
+          countdownTimer = null;
+        }
+      }
+
+      function stopResizeDebounce() {
+        if (resizeDebounce) {
+          clearTimeout(resizeDebounce);
+          resizeDebounce = null;
+        }
+      }
+
+      function disconnectResizeObserver() {
+        if (resizeObserver) {
+          try {
+            resizeObserver.disconnect();
+          } catch {
+            // Ignore
+          }
+          resizeObserver = null;
+        }
+      }
+
+      // Perform resource teardown
+      function performTeardown() {
+        if (disposed) return;
+        disposed = true;
+        isInitialized = false;
+        inFlight = false;
+
+        stopPolling();
+        stopCooldown();
+        stopCountdowns();
+        stopResizeDebounce();
+        disconnectResizeObserver();
+
+        for (const [id, req] of pendingRequests.entries()) {
+          clearTimeout(req.timer);
+          try {
+            req.reject(new Error('UI resource disposed'));
+          } catch {
+            // Ignore
+          }
+        }
+        pendingRequests.clear();
+      }
+
+      // Host Message Listener
+      window.addEventListener('message', (event) => {
+        if (event.source !== window.parent) return;
+        const msg = event.data;
+        if (!msg || typeof msg !== 'object' || msg.jsonrpc !== '2.0') return;
+
+        // If disposed, ignore any incoming message (ignore late data)
+        if (disposed) return;
+
+        // 1. Pending Request Response
+        // Only accept response id when method is absent and result/error is present to prevent collision with host requests
+        const isResponse = (msg.id !== undefined && !msg.method && (msg.result !== undefined || msg.error !== undefined));
+        if (isResponse) {
+          if (pendingRequests.has(msg.id)) {
+            const { resolve, reject, timer } = pendingRequests.get(msg.id);
+            clearTimeout(timer);
+            pendingRequests.delete(msg.id);
+
+            if (msg.error) {
+              reject(new Error(msg.error.message || `RPC Error ${msg.error.code}`));
+            } else {
+              resolve(msg.result);
+            }
+          }
+          return;
+        }
+
+        // 2. Host Requests & Notifications
+        if (msg.method) {
+          const method = msg.method;
+          const params = msg.params;
+          const isRequest = (msg.id !== undefined);
+
+          if (method === 'ui/resource-teardown') {
+            performTeardown();
+            if (isRequest) {
+              window.parent.postMessage({
+                jsonrpc: '2.0',
+                id: msg.id,
+                result: {}
+              }, '*');
+            }
+            return;
+          }
+
+          if (method === 'ui/notifications/teardown') {
+            performTeardown();
+            return;
+          }
+
+          if (method === 'ui/notifications/tool-result') {
+            // Ext-apps spec passes CallToolResult directly in params, or optionally in params.result
+            const toolRes = (params && params.result) ? params.result : params;
+            if (toolRes) {
+              if (toolRes.isError) {
+                showError(toolRes.content?.[0]?.text || '工具调用报错');
+              } else if (toolRes.structuredContent) {
+                renderStatus(toolRes.structuredContent);
+              }
+            }
+            return;
+          }
+
+          if (method === 'ui/notifications/tool-cancelled') {
+            return;
+          }
+
+          if (method === 'ui/notifications/host-context-changed') {
+            const ctx = params?.hostContext || params;
+            if (ctx && ctx.theme) {
+              applyTheme(ctx.theme);
+            }
+            return;
+          }
+
+          // Unknown host request: respond with -32601 Method not found
+          if (isRequest) {
+            window.parent.postMessage({
+              jsonrpc: '2.0',
+              id: msg.id,
+              error: {
+                code: -32601,
+                message: `Method not found: ${method}`
+              }
+            }, '*');
+            return;
+          }
+        }
+      });
+
+      // UI Events
+      refreshBtn.addEventListener('click', () => {
+        if (disposed || inFlight || cooldownSeconds > 0) return;
+        startCooldown(10);
+        loadUsage(true);
+      });
+
+      autoRefreshToggle.addEventListener('change', () => {
+        if (disposed) return;
+        if (autoRefreshToggle.checked) {
+          startPolling();
+          loadUsage(false);
+        } else {
+          stopPolling();
+        }
+      });
+
+      // Pause while hidden
+      document.addEventListener('visibilitychange', () => {
+        if (disposed || !isInitialized) return;
+        if (document.hidden) {
+          stopPolling();
+        } else {
+          if (autoRefreshToggle.checked) {
+            loadUsage(false);
+            startPolling();
+          }
+        }
+      });
+
+      // Observe size changes
+      if (window.ResizeObserver && appRoot) {
+        try {
+          resizeObserver = new ResizeObserver(() => {
+            if (isInitialized && !disposed) {
+              notifySize();
+            }
+          });
+          resizeObserver.observe(appRoot);
+        } catch {
+          // Ignore
+        }
+      }
+
+      // Initialize Bridge Handshake
+      async function initializeBridge() {
+        try {
+          const initRes = await sendRpcRequest('ui/initialize', {
+            protocolVersion: '2026-01-26',
+            appInfo: {
+              name: 'agy-usage-panel',
+              version: '1.1.0'
+            },
+            appCapabilities: {}
+          }, 15000);
+
+          if (disposed) return;
+
+          if (initRes && initRes.hostContext && initRes.hostContext.theme) {
+            applyTheme(initRes.hostContext.theme);
+          }
+
+          sendRpcNotification('ui/notifications/initialized', {});
+          isInitialized = true;
+
+          startCountdowns();
+          loadUsage(false);
+          startPolling();
+        } catch (err) {
+          if (disposed) return;
+          showError('宿主界面连接失败: ' + (err.message || '超时或未在支持的环境中运行'));
+        }
+      }
+
+      initializeBridge();
+    })();
+  </script>
+</body>
+</html>
