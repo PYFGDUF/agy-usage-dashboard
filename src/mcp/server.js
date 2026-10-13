@@ -340,7 +340,9 @@ export function createMcpServer() {
                 type: 'object',
                 properties: {
                   inputTokens: { type: 'number', description: '输入 token 数量' },
-                  outputTokens: { type: 'number', description: '输出 token 数量' }
+                  outputTokens: { type: 'number', description: '输出 token 数量' },
+                  input_tokens: { type: 'number', description: '输入 token 数量 (snake_case 别名)' },
+                  output_tokens: { type: 'number', description: '输出 token 数量 (snake_case 别名)' }
                 },
                 description: '可选的 token 统计'
               }
@@ -411,8 +413,9 @@ export function createMcpServer() {
             content: [{ type: 'text', text: 'Invalid parameter "usage": must be an object' }]
           };
         }
+        const allowedUsageKeys = new Set(['inputTokens', 'outputTokens', 'input_tokens', 'output_tokens']);
         for (const k of Object.keys(args.usage)) {
-          if (k !== 'inputTokens' && k !== 'outputTokens') {
+          if (!allowedUsageKeys.has(k)) {
             return {
               isError: true,
               content: [{ type: 'text', text: `Unexpected field in usage: "${k}"` }]
@@ -427,11 +430,43 @@ export function createMcpServer() {
             };
           }
         }
+        if (args.usage.input_tokens !== undefined) {
+          if (typeof args.usage.input_tokens !== 'number' || !Number.isFinite(args.usage.input_tokens) || !Number.isInteger(args.usage.input_tokens) || args.usage.input_tokens < 0 || args.usage.input_tokens > 100_000_000_000) {
+            return {
+              isError: true,
+              content: [{ type: 'text', text: 'Invalid parameter "usage.input_tokens": must be a non-negative bounded integer' }]
+            };
+          }
+        }
+        if (args.usage.inputTokens !== undefined && args.usage.input_tokens !== undefined) {
+          if (args.usage.inputTokens !== args.usage.input_tokens) {
+            return {
+              isError: true,
+              content: [{ type: 'text', text: 'Conflicting aliases: "inputTokens" and "input_tokens" values do not match' }]
+            };
+          }
+        }
         if (args.usage.outputTokens !== undefined) {
           if (typeof args.usage.outputTokens !== 'number' || !Number.isFinite(args.usage.outputTokens) || !Number.isInteger(args.usage.outputTokens) || args.usage.outputTokens < 0 || args.usage.outputTokens > 100_000_000_000) {
             return {
               isError: true,
               content: [{ type: 'text', text: 'Invalid parameter "usage.outputTokens": must be a non-negative bounded integer' }]
+            };
+          }
+        }
+        if (args.usage.output_tokens !== undefined) {
+          if (typeof args.usage.output_tokens !== 'number' || !Number.isFinite(args.usage.output_tokens) || !Number.isInteger(args.usage.output_tokens) || args.usage.output_tokens < 0 || args.usage.output_tokens > 100_000_000_000) {
+            return {
+              isError: true,
+              content: [{ type: 'text', text: 'Invalid parameter "usage.output_tokens": must be a non-negative bounded integer' }]
+            };
+          }
+        }
+        if (args.usage.outputTokens !== undefined && args.usage.output_tokens !== undefined) {
+          if (args.usage.outputTokens !== args.usage.output_tokens) {
+            return {
+              isError: true,
+              content: [{ type: 'text', text: 'Conflicting aliases: "outputTokens" and "output_tokens" values do not match' }]
             };
           }
         }
@@ -593,13 +628,34 @@ export function createMcpServer() {
 
       if (name === 'agy_supervisor_event') {
         const { id, model = DEFAULT_MODEL_ID, status, usage } = args;
-        const res = await apiRequest('POST', '/api/tasks', { id, model, status, usage });
+        let canonicalUsage = undefined;
+        if (usage !== undefined && usage !== null) {
+          canonicalUsage = {};
+          if (usage.inputTokens !== undefined) canonicalUsage.inputTokens = usage.inputTokens;
+          else if (usage.input_tokens !== undefined) canonicalUsage.inputTokens = usage.input_tokens;
+
+          if (usage.outputTokens !== undefined) canonicalUsage.outputTokens = usage.outputTokens;
+          else if (usage.output_tokens !== undefined) canonicalUsage.outputTokens = usage.output_tokens;
+        }
+
+        const res = await apiRequest('POST', '/api/tasks', { id, model, status, usage: canonicalUsage });
+
+        let tokenText = '';
+        if (res.task.usage) {
+          const hasInput = res.task.usage.inputTokens !== undefined;
+          const hasOutput = res.task.usage.outputTokens !== undefined;
+          if (hasInput || hasOutput) {
+            const inp = hasInput ? `${res.task.usage.inputTokens}` : '未提供';
+            const out = hasOutput ? `${res.task.usage.outputTokens}` : '未提供';
+            tokenText = `\n- **Token (入 / 出)**: ${inp} / ${out}`;
+          }
+        }
 
         const text = `已成功记录 Supervisor 任务事件:\n` +
           `- **任务 ID**: \`${res.task.id}\`\n` +
           `- **模型**: \`${res.task.model}\`\n` +
           `- **状态**: \`${res.task.status}\`\n` +
-          `- **更新时间**: ${formatShanghaiTime(res.task.updatedAt)}`;
+          `- **更新时间**: ${formatShanghaiTime(res.task.updatedAt)}${tokenText}`;
 
         return {
           content: [

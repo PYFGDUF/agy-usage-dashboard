@@ -4,3 +4,8 @@ node_modules/
 artifacts/
 .DS_Store
 *.log
+.env
+.env.*
+!.env.example
+*.pem
+*.key

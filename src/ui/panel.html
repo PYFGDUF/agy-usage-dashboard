@@ -1109,10 +1109,16 @@
           for (const t of tasks) {
             const statusClass = ['queued', 'running', 'completed', 'failed'].includes(t.status) ? t.status : 'unknown';
             const statusLabel = statusMap[t.status] || t.status;
-            let usageText = '-';
-            if (t.usage && (t.usage.inputTokens !== undefined || t.usage.outputTokens !== undefined)) {
-              const inp = t.usage.inputTokens !== undefined ? Number(t.usage.inputTokens).toLocaleString() : '-';
-              const out = t.usage.outputTokens !== undefined ? Number(t.usage.outputTokens).toLocaleString() : '-';
+            const rawUsage = t.usage || {};
+            const inputVal = rawUsage.inputTokens !== undefined ? rawUsage.inputTokens : rawUsage.input_tokens;
+            const outputVal = rawUsage.outputTokens !== undefined ? rawUsage.outputTokens : rawUsage.output_tokens;
+            const hasInput = (inputVal !== undefined && inputVal !== null);
+            const hasOutput = (outputVal !== undefined && outputVal !== null);
+
+            let usageText = '未提供';
+            if (hasInput || hasOutput) {
+              const inp = hasInput ? Number(inputVal).toLocaleString() : '未提供';
+              const out = hasOutput ? Number(outputVal).toLocaleString() : '未提供';
               usageText = `${inp} / ${out}`;
             }
 

@@ -310,7 +310,7 @@ describe('Runtime Bridge node:vm Regression Tests', () => {
       await tick();
     };
 
-    const status = (p, connErr = null) => ({
+    const status = (p, connErr = null, tasks = []) => ({
       connection: { state: connErr ? 'error' : 'ready', error: connErr },
       usage: {
         windows: [{
@@ -322,7 +322,7 @@ describe('Runtime Bridge node:vm Regression Tests', () => {
         stale: false,
         updatedAt: new Date().toISOString()
       },
-      tasks: []
+      tasks
     });
 
     return {
@@ -541,5 +541,79 @@ describe('Runtime Bridge node:vm Regression Tests', () => {
     });
     assert.equal(h.el('error-banner').classList.contains('hidden'), true, 'Error banner should be hidden when recovered');
     assert.ok(h.el('quota-grid').innerHTML.includes('>50%</span>'));
+  });
+
+  it('renders task tokens with canonical and snake_case exact fields, shows 未提供 when absent, and distinguishes numeric 0', async () => {
+    const h = createHarness();
+    const init = h.output.find(x => x.method === 'ui/initialize');
+    await h.dispatch({
+      id: init.id,
+      result: { protocolVersion: '2026-01-26', hostCapabilities: {}, hostContext: {} }
+    });
+
+    const initialToolCall = h.output.find(x => x.method === 'tools/call');
+
+    const tasks = [
+      {
+        id: 'task-canonical',
+        model: 'gemini-3.8-flash-high',
+        status: 'completed',
+        usage: { inputTokens: 1250, outputTokens: 340 }
+      },
+      {
+        id: 'task-bridge',
+        model: 'gemini-3.8-flash-high',
+        status: 'completed',
+        usage: { input_tokens: 4500, output_tokens: 800 }
+      },
+      {
+        id: 'task-zero',
+        model: 'gemini-3.8-flash-high',
+        status: 'completed',
+        usage: { inputTokens: 0, outputTokens: 0 }
+      },
+      {
+        id: 'task-partial-zero',
+        model: 'gemini-3.8-flash-high',
+        status: 'running',
+        usage: { input_tokens: 0 }
+      },
+      {
+        id: 'task-absent-1',
+        model: 'gemini-3.8-flash-high',
+        status: 'queued'
+      },
+      {
+        id: 'task-absent-2',
+        model: 'gemini-3.8-flash-high',
+        status: 'running',
+        usage: {}
+      }
+    ];
+
+    await h.dispatch({
+      id: initialToolCall.id,
+      result: { structuredContent: h.status(60, null, tasks) }
+    });
+
+    const tableHtml = h.el('tasks-body').innerHTML;
+    assert.equal(h.el('tasks-count').textContent, '6');
+    assert.equal(h.el('tasks-table-wrap').classList.contains('hidden'), false);
+    assert.equal(h.el('tasks-empty').classList.contains('hidden'), true);
+
+    // 1. Canonical tokens rendered
+    assert.ok(tableHtml.includes('1,250 / 340'), 'Canonical inputTokens/outputTokens must render');
+
+    // 2. Bridge snake_case tokens rendered
+    assert.ok(tableHtml.includes('4,500 / 800'), 'Bridge input_tokens/output_tokens must render');
+
+    // 3. Numeric zero rendered as '0 / 0' (not '未提供')
+    assert.ok(tableHtml.includes('<td>0 / 0</td>'), 'Exact zero tokens must render as 0 / 0');
+
+    // 4. Partial zero rendered with 未提供 for absent side
+    assert.ok(tableHtml.includes('<td>0 / 未提供</td>'), 'Partial count must display 0 and 未提供 for absent side');
+
+    // 5. Absent counts rendered as '未提供'
+    assert.ok(tableHtml.includes('<td>未提供</td>'), 'Absent usage must display 未提供');
   });
 });

@@ -36,6 +36,11 @@ if (sdkVersion === '1.32.1') {
 // 2. Manifests & structure check
 console.log('\n[2/4] 检查工程文件结构与插件清单...');
 const requiredFiles = [
+  'README.md',
+  'LICENSE',
+  'SECURITY.md',
+  '.github/workflows/ci.yml',
+  '.agents/plugins/marketplace.json',
   '.codex-plugin/plugin.json',
   '.mcp.json',
   'skills/agy-usage/SKILL.md',
@@ -83,6 +88,20 @@ try {
   }
 } catch (err) {
   console.error(`  ❌ 解析 plugin.json 异常: ${err.message}`);
+  hasErrors = true;
+}
+
+try {
+  const marketplace = JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, '.agents/plugins/marketplace.json'), 'utf8'));
+  const plugin = marketplace.plugins?.find(item => item.name === 'agy-usage-dashboard');
+  if (marketplace.name && plugin?.source?.source === 'local' && plugin.source.path === './') {
+    console.log('  ✅ GitHub 克隆目录可直接作为本地 marketplace 使用');
+  } else {
+    console.error('  ❌ marketplace.json 缺少有效名称或本地插件源配置');
+    hasErrors = true;
+  }
+} catch (err) {
+  console.error(`  ❌ 解析 marketplace.json 异常: ${err.message}`);
   hasErrors = true;
 }
 

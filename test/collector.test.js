@@ -263,4 +263,110 @@ describe('Collector & TaskStore Tests', () => {
     assert.equal(updated.status, 'completed');
     assert.ok(updated.endedAt);
   });
+
+  it('canonicalizes snake_case exact fields to inputTokens/outputTokens, preserves numeric 0, rejects conflicting aliases, and never infers counts', () => {
+    const store = new TaskStore({ stateFile });
+
+    // 1. Accepts snake_case exact fields and canonicalizes them in stored tasks
+    const taskSnake = store.recordEvent({
+      id: 'task-snake-1',
+      status: 'completed',
+      usage: { input_tokens: 1500, output_tokens: 300 }
+    });
+    assert.equal(taskSnake.usage.inputTokens, 1500);
+    assert.equal(taskSnake.usage.outputTokens, 300);
+    assert.equal(taskSnake.usage.input_tokens, undefined, 'Stored usage must only contain canonical keys');
+    assert.equal(taskSnake.usage.output_tokens, undefined, 'Stored usage must only contain canonical keys');
+
+    // 2. Preserves exact numeric zero without inferring or omitting
+    const taskZero = store.recordEvent({
+      id: 'task-zero',
+      status: 'completed',
+      usage: { input_tokens: 0, output_tokens: 0 }
+    });
+    assert.equal(taskZero.usage.inputTokens, 0);
+    assert.equal(taskZero.usage.outputTokens, 0);
+
+    // 3. Never infers counts: single-sided usage leaves other side undefined
+    const taskSingle = store.recordEvent({
+      id: 'task-single-input',
+      status: 'running',
+      usage: { input_tokens: 420 }
+    });
+    assert.equal(taskSingle.usage.inputTokens, 420);
+    assert.equal(taskSingle.usage.outputTokens, undefined, 'outputTokens must not be inferred');
+
+    const taskSingleOut = store.recordEvent({
+      id: 'task-single-output',
+      status: 'running',
+      usage: { output_tokens: 0 }
+    });
+    assert.equal(taskSingleOut.usage.inputTokens, undefined, 'inputTokens must not be inferred');
+    assert.equal(taskSingleOut.usage.outputTokens, 0);
+
+    // 4. Rejects conflicting aliases
+    assert.throws(
+      () => store.recordEvent({
+        id: 'task-conflict-1',
+        status: 'running',
+        usage: { inputTokens: 100, input_tokens: 200 }
+      }),
+      /Conflicting aliases/
+    );
+    assert.throws(
+      () => store.recordEvent({
+        id: 'task-conflict-2',
+        status: 'running',
+        usage: { outputTokens: 50, output_tokens: 60 }
+      }),
+      /Conflicting aliases/
+    );
+
+    // 5. Accepts identical non-conflicting aliases and canonicalizes
+    const taskMatching = store.recordEvent({
+      id: 'task-matching',
+      status: 'running',
+      usage: { inputTokens: 500, input_tokens: 500, outputTokens: 100, output_tokens: 100 }
+    });
+    assert.equal(taskMatching.usage.inputTokens, 500);
+    assert.equal(taskMatching.usage.outputTokens, 100);
+
+    // 6. Rejects malformed snake_case values
+    assert.throws(
+      () => store.recordEvent({
+        id: 'task-bad-1',
+        status: 'running',
+        usage: { input_tokens: -1 }
+      }),
+      /Task usage.input_tokens must be a non-negative bounded integer/
+    );
+    assert.throws(
+      () => store.recordEvent({
+        id: 'task-bad-2',
+        status: 'running',
+        usage: { output_tokens: 2.5 }
+      }),
+      /Task usage.output_tokens must be a non-negative bounded integer/
+    );
+    assert.throws(
+      () => store.recordEvent({
+        id: 'task-bad-3',
+        status: 'running',
+        usage: { input_tokens: '100' }
+      }),
+      /Task usage.input_tokens must be a non-negative bounded integer/
+    );
+
+    // 7. init canonicalizes loaded initial tasks with snake_case
+    const reloadedStore = new TaskStore({ stateFile });
+    reloadedStore.init([
+      { id: 'init-task-1', status: 'completed', usage: { input_tokens: 888, output_tokens: 222 } },
+      { id: 'init-task-2', status: 'running', usage: { inputTokens: 50 } }
+    ]);
+    const initTasks = reloadedStore.getTasks();
+    assert.equal(initTasks.length, 2);
+    assert.equal(initTasks[0].usage.inputTokens, 888);
+    assert.equal(initTasks[0].usage.outputTokens, 222);
+    assert.equal(initTasks[0].usage.input_tokens, undefined);
+  });
 });

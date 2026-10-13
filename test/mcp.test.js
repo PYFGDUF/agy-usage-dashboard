@@ -106,6 +106,40 @@ describe('MCP Server Integration Tests', () => {
       });
       assert.equal(badUsageRes.isError, true);
 
+      // Test conflicting aliases rejection
+      const conflictRes1 = await client.callTool({
+        name: 'agy_supervisor_event',
+        arguments: { id: 'job-1', status: 'running', usage: { inputTokens: 100, input_tokens: 200 } }
+      });
+      assert.equal(conflictRes1.isError, true);
+      assert.ok(conflictRes1.content[0].text.includes('Conflicting aliases'));
+
+      const conflictRes2 = await client.callTool({
+        name: 'agy_supervisor_event',
+        arguments: { id: 'job-1', status: 'running', usage: { outputTokens: 50, output_tokens: 60 } }
+      });
+      assert.equal(conflictRes2.isError, true);
+      assert.ok(conflictRes2.content[0].text.includes('Conflicting aliases'));
+
+      // Test malformed snake_case parameter rejection
+      const badSnakeRes = await client.callTool({
+        name: 'agy_supervisor_event',
+        arguments: { id: 'job-1', status: 'running', usage: { input_tokens: -10 } }
+      });
+      assert.equal(badSnakeRes.isError, true);
+
+      const badSnakeFloatRes = await client.callTool({
+        name: 'agy_supervisor_event',
+        arguments: { id: 'job-1', status: 'running', usage: { output_tokens: 1.5 } }
+      });
+      assert.equal(badSnakeFloatRes.isError, true);
+
+      const badFieldRes = await client.callTool({
+        name: 'agy_supervisor_event',
+        arguments: { id: 'job-1', status: 'running', usage: { unknown_metric: 100 } }
+      });
+      assert.equal(badFieldRes.isError, true);
+
       // 4. agy_dashboard_open returns structuredContent with URL
       const dashRes = await client.callTool({
         name: 'agy_dashboard_open',
@@ -116,7 +150,7 @@ describe('MCP Server Integration Tests', () => {
       assert.ok(dashRes.structuredContent);
       assert.ok(dashRes.structuredContent.url.includes(`${testPort}`));
 
-      // 5. agy_supervisor_event with valid typed args
+      // 5. agy_supervisor_event with valid typed args (canonical)
       const eventRes = await client.callTool({
         name: 'agy_supervisor_event',
         arguments: {
@@ -128,10 +162,55 @@ describe('MCP Server Integration Tests', () => {
       });
       assert.ok(!eventRes.isError);
       assert.ok(eventRes.content[0].text.includes('test-job-999'));
+      assert.ok(eventRes.content[0].text.includes('1000 / 200'));
       assert.equal(eventRes.structuredContent.id, 'test-job-999');
       assert.equal(eventRes.structuredContent.status, 'running');
       assert.equal(eventRes.structuredContent.usage.inputTokens, 1000);
       assert.equal(eventRes.structuredContent.usage.outputTokens, 200);
+
+      // 5b. agy_supervisor_event with bridge snake_case fields (canonicalizes to inputTokens/outputTokens)
+      const eventSnakeRes = await client.callTool({
+        name: 'agy_supervisor_event',
+        arguments: {
+          id: 'test-job-bridge',
+          model: 'gemini-3.8-flash-high',
+          status: 'completed',
+          usage: { input_tokens: 3500, output_tokens: 720 }
+        }
+      });
+      assert.ok(!eventSnakeRes.isError);
+      assert.equal(eventSnakeRes.structuredContent.id, 'test-job-bridge');
+      assert.equal(eventSnakeRes.structuredContent.status, 'completed');
+      assert.equal(eventSnakeRes.structuredContent.usage.inputTokens, 3500);
+      assert.equal(eventSnakeRes.structuredContent.usage.outputTokens, 720);
+      assert.equal(eventSnakeRes.structuredContent.usage.input_tokens, undefined);
+      assert.equal(eventSnakeRes.structuredContent.usage.output_tokens, undefined);
+
+      // 5c. agy_supervisor_event with numeric 0
+      const eventZeroRes = await client.callTool({
+        name: 'agy_supervisor_event',
+        arguments: {
+          id: 'test-job-zero',
+          status: 'completed',
+          usage: { input_tokens: 0, output_tokens: 0 }
+        }
+      });
+      assert.ok(!eventZeroRes.isError);
+      assert.equal(eventZeroRes.structuredContent.usage.inputTokens, 0);
+      assert.equal(eventZeroRes.structuredContent.usage.outputTokens, 0);
+
+      // 5d. agy_supervisor_event never infers absent counts
+      const eventPartialRes = await client.callTool({
+        name: 'agy_supervisor_event',
+        arguments: {
+          id: 'test-job-partial',
+          status: 'running',
+          usage: { input_tokens: 500 }
+        }
+      });
+      assert.ok(!eventPartialRes.isError);
+      assert.equal(eventPartialRes.structuredContent.usage.inputTokens, 500);
+      assert.equal(eventPartialRes.structuredContent.usage.outputTokens, undefined);
 
       // 6. agy_usage_get with valid typed args
       const usageRes = await client.callTool({

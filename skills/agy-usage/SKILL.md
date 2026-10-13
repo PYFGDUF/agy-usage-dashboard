@@ -68,10 +68,50 @@ description: Antigravity 配额查询、原生 GUI 面板展示与 Supervisor �
   - `id` (字符串，必填): 任务唯一标识符（1~64 字符）。
   - `model` (字符串，可选): 模型名称，默认为 `gemini-3.8-flash-high`。
   - `status` (枚举，必填): `queued` | `running` | `completed` | `failed` | `unknown`。
-  - `usage` (对象，可选): `{ inputTokens?: number, outputTokens?: number }`。
+  - `usage` (对象，可选): 支持规范驼峰 `{ inputTokens?: number, outputTokens?: number }` 与桥接 snake_case 别名 `{ input_tokens?: number, output_tokens?: number }`。
+- 特性：
+  - REST 与 MCP 接口均接受两类字段，存储时会自动规范化（canonicalize）为 `inputTokens` / `outputTokens`。
+  - 严格校验数值为非负有界整数，若传入数值不一致的冲突别名（如 `inputTokens` 与 `input_tokens` 不等）将被严格拒绝报错。
+
+---
+
+## Supervisor Token 指标提取与上报安全工作流 (Safe Token Extraction & Reporting Workflow)
+
+在围绕 Supervisor 或自主任务（如 `agy_start`、`agy_status` 等）的执行周期中，智能体应按照以下安全流程提取指标并上报至 `agy_supervisor_event`：
+
+### 1. 精确指标提取 (Exact Metric Extraction)
+- **优先从 structuredContent 提取**：
+  若桥接工具返回中包含 `structuredContent`，检查其中是否存在 `usage` 对象（例如 `structuredContent.usage` 或 `structuredContent.task.usage`），直接提取精确的 `input_tokens` / `inputTokens` 与 `output_tokens` / `outputTokens`。
+- **从嵌套 JSON 文本提取**：
+  若上游工具仅在文本中输出（例如 `content[0].text` 或日志输出），解析其中的嵌套 JSON 结构，并严格提取 exact 字段：
+  ```javascript
+  // 提取示例
+  const payload = JSON.parse(rawText);
+  const bridgeUsage = payload.usage || payload.task?.usage || {};
+  const input = bridgeUsage.input_tokens ?? bridgeUsage.inputTokens;
+  const output = bridgeUsage.output_tokens ?? bridgeUsage.outputTokens;
+  ```
+- **保留确切数值**：
+  保持上游返回的真实整数值，切勿四舍五入或截断。
+
+### 2. 不可用指标必须保持不可用 (Unavailable Metrics Must Remain Unavailable)
+- **严禁推断或臆测指标 (Never Infer Counts)**：
+  若桥接输出中未包含 Token 计数，或者字段为 `undefined` / `null`，该指标即为**不可用**。
+  - **严禁**通过 prompt 长度、字符数、输出词数或经验公式推算 Token 数量。
+  - **严禁**在指标缺失时随意填充默认值（例如私自填 `0`）。
+  - **不可用指标必须保持缺失**：在调用 `agy_supervisor_event` 时，省略未提供的字段或直接不传递 `usage`。
+- **严格区分“缺失”与“数值 0”**：
+  - 仅当上游桥接明确返回数值 `0`（例如确定消耗 0 Token）时，才上报 `0`。
+  - 原生监控面板会将未提供的指标清晰呈现为“`未提供`”，并将数值 `0` 明确展示为 `0`，避免信息混淆。
+
+### 3. 严格别名与冲突校验 (Strict Aliases Validation)
+- 接口接受 canonical (`inputTokens`, `outputTokens`) 或 snake_case (`input_tokens`, `output_tokens`)。
+- 若同时提供同名别名，两者的值必须完全相同；若别名数值存在冲突（如 `{ inputTokens: 100, input_tokens: 200 }`），请求将被服务端与 MCP 严格拦截报错。
+
+### 4. 规范上报示例 (Reporting Examples)
 
 ```json
-// 任务启动上报示例
+// 示例 1: 任务启动上报（无指标，仅记录状态）
 {
   "name": "agy_supervisor_event",
   "arguments": {
@@ -81,15 +121,36 @@ description: Antigravity 配额查询、原生 GUI 面板展示与 Supervisor �
   }
 }
 
-// 任务结束上报示例
+// 示例 2: 任务完成，从桥接输出信封提取 exact snake_case 指标
 {
   "name": "agy_supervisor_event",
   "arguments": {
     "id": "task-impl-101",
     "status": "completed",
     "usage": {
-      "inputTokens": 3200,
-      "outputTokens": 850
+      "input_tokens": 3200,
+      "output_tokens": 850
+    }
+  }
+}
+
+// 示例 3: 任务完成，但上游未提供 Token 指标（保持缺失，面板显示“未提供”）
+{
+  "name": "agy_supervisor_event",
+  "arguments": {
+    "id": "task-impl-102",
+    "status": "completed"
+  }
+}
+
+// 示例 4: 仅部分指标可用（如仅输入计数可用）
+{
+  "name": "agy_supervisor_event",
+  "arguments": {
+    "id": "task-impl-103",
+    "status": "running",
+    "usage": {
+      "input_tokens": 1200
     }
   }
 }
@@ -105,5 +166,7 @@ description: Antigravity 配额查询、原生 GUI 面板展示与 Supervisor �
    系统默认模型固定为 `gemini-3.8-flash-high`，严禁擅自修改默认模型 ID。
 3. **切勿根据 Token 计数推断配额**:
    Antigravity 配额由官方服务端与 CLI 维护，严禁通过累加 Token 数自行计算剩余配额百分比。配额必须且仅能以 `agy --print /usage` 官方输出为准。
-4. **保留安全与权限检查**:
+4. **指标不可用时严禁推断**:
+   若上游桥接未提供 Token 计数，必须如实保持缺失（面板显示“未提供”），严禁按字符猜测或填充默认值。
+5. **保留安全与权限检查**:
    保持默认权限校验，不得要求禁用权限隔离或越权访问认证凭证。

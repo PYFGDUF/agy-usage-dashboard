@@ -30,7 +30,22 @@ export class TaskStore {
           typeof t.status === 'string' &&
           VALID_STATUSES.has(t.status.toLowerCase())
         ) {
-          valid.push(t);
+          let canonicalTask = t;
+          if (t.usage && typeof t.usage === 'object' && !Array.isArray(t.usage)) {
+            const canonicalUsage = {};
+            if (t.usage.inputTokens !== undefined) {
+              canonicalUsage.inputTokens = t.usage.inputTokens;
+            } else if (t.usage.input_tokens !== undefined) {
+              canonicalUsage.inputTokens = t.usage.input_tokens;
+            }
+            if (t.usage.outputTokens !== undefined) {
+              canonicalUsage.outputTokens = t.usage.outputTokens;
+            } else if (t.usage.output_tokens !== undefined) {
+              canonicalUsage.outputTokens = t.usage.output_tokens;
+            }
+            canonicalTask = { ...t, usage: canonicalUsage };
+          }
+          valid.push(canonicalTask);
         }
       }
       this.tasks = valid.slice(0, this.maxTasks);
@@ -107,15 +122,17 @@ export class TaskStore {
       }
       sanitizedUsage = {};
       const MAX_TOKENS = 100_000_000_000;
+      const ALLOWED_KEYS = new Set(['inputTokens', 'outputTokens', 'input_tokens', 'output_tokens']);
 
       for (const key of Object.keys(usage)) {
-        if (key !== 'inputTokens' && key !== 'outputTokens') {
+        if (!ALLOWED_KEYS.has(key)) {
           const err = new Error(`Unexpected field in task usage: "${key}"`);
           err.statusCode = 400;
           throw err;
         }
       }
 
+      let inputVal;
       if (usage.inputTokens !== undefined) {
         if (
           typeof usage.inputTokens !== 'number' ||
@@ -128,9 +145,34 @@ export class TaskStore {
           err.statusCode = 400;
           throw err;
         }
-        sanitizedUsage.inputTokens = usage.inputTokens;
+        inputVal = usage.inputTokens;
       }
 
+      if (usage.input_tokens !== undefined) {
+        if (
+          typeof usage.input_tokens !== 'number' ||
+          !Number.isFinite(usage.input_tokens) ||
+          !Number.isInteger(usage.input_tokens) ||
+          usage.input_tokens < 0 ||
+          usage.input_tokens > MAX_TOKENS
+        ) {
+          const err = new Error('Task usage.input_tokens must be a non-negative bounded integer');
+          err.statusCode = 400;
+          throw err;
+        }
+        if (inputVal !== undefined && inputVal !== usage.input_tokens) {
+          const err = new Error('Conflicting aliases: "inputTokens" and "input_tokens" values do not match');
+          err.statusCode = 400;
+          throw err;
+        }
+        inputVal = usage.input_tokens;
+      }
+
+      if (inputVal !== undefined) {
+        sanitizedUsage.inputTokens = inputVal;
+      }
+
+      let outputVal;
       if (usage.outputTokens !== undefined) {
         if (
           typeof usage.outputTokens !== 'number' ||
@@ -143,7 +185,31 @@ export class TaskStore {
           err.statusCode = 400;
           throw err;
         }
-        sanitizedUsage.outputTokens = usage.outputTokens;
+        outputVal = usage.outputTokens;
+      }
+
+      if (usage.output_tokens !== undefined) {
+        if (
+          typeof usage.output_tokens !== 'number' ||
+          !Number.isFinite(usage.output_tokens) ||
+          !Number.isInteger(usage.output_tokens) ||
+          usage.output_tokens < 0 ||
+          usage.output_tokens > MAX_TOKENS
+        ) {
+          const err = new Error('Task usage.output_tokens must be a non-negative bounded integer');
+          err.statusCode = 400;
+          throw err;
+        }
+        if (outputVal !== undefined && outputVal !== usage.output_tokens) {
+          const err = new Error('Conflicting aliases: "outputTokens" and "output_tokens" values do not match');
+          err.statusCode = 400;
+          throw err;
+        }
+        outputVal = usage.output_tokens;
+      }
+
+      if (outputVal !== undefined) {
+        sanitizedUsage.outputTokens = outputVal;
       }
     }
 
