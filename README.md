@@ -95,7 +95,7 @@ codex mcp add agy-usage -- "<Node绝对路径>" "<项目绝对路径>/src/mcp/se
 
 以上数值仅为上报格式示例。接口兼容 `inputTokens` / `outputTokens` 与 `input_tokens` / `output_tokens`，存储时统一字段；数值必须是非负整数，冲突别名会被拒绝。
 
-使用 AGY Supervisor 时，应从工具的结构化结果或 JSON 文本中提取真实 `usage` 后上报。部分异步桥接结果没有计数，此时应省略 `usage`；“未提供”不等于 `0`，历史缺失值也无法凭空恢复。详见 [agy-usage 技能](skills/agy-usage/SKILL.md)。
+使用 [AGY Supervisor](https://github.com/crazyzhang277/codex-antigravity-bridge) 时，应从工具的结构化结果或 JSON 文本中提取真实 `usage` 后上报。部分异步桥接结果没有计数，此时应省略 `usage`；“未提供”不等于 `0`，历史缺失值也无法凭空恢复。详见 [agy-usage 技能](skills/agy-usage/SKILL.md)。
 
 ## MCP 工具
 
