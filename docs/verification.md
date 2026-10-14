@@ -85,3 +85,11 @@ User explicitly replied “已打开，能看到配额” after the1.1.0 native 
 - Final `npm run verify`: 58 tests passed, zero failures, plus the stdio MCP smoke test. Regression checks cover missing versus zero tokens, dynamic language/cooldown changes, storage restrictions, and errors surviving language changes without resurrecting dismissed banners.
 - Headless Chrome exercised the actual native HTML through a mocked MCP parent at 360px and 1000px in both themes; language switching, persistence, UTC+8 labels, missing/zero counts, local error translation, and document overflow checks passed. The browser fallback was also exercised at both widths. These checks do not claim direct automation of the Codex app shell.
 - Refreshed example-data screenshots for both README languages. Installed 1.2.0 through the configured local marketplace; the installed panel hash matches reviewed source, and the installed cache passed an isolated stdio MCP smoke test. Existing open panels may require reopening or a client restart to load the updated resource.
+
+
+## 2026-10-14 — Follow Codex mode, version 1.3.0
+
+- Added native-panel auto mode using the optional MCP Apps `hostContext.locale` from initialization and partial `ui/notifications/host-context-changed` updates. Fresh installations default to auto; stored manual overrides remain intact. Missing/invalid host locale falls back to navigator language. Automatic detection never saves a detected language as a manual preference.
+- Protocol reference: https://apps.extensions.modelcontextprotocol.io/api/interfaces/types.McpUiHostContext.html . The locale field is optional; this does not establish that every Codex version emits its selected UI language.
+- Final verification: 61 tests passed, zero failures, plus stdio MCP smoke. Browser-rendered native-component checks at 360px/1000px in light/dark themes simulated differing browser/host locales, live host updates, manual overrides, persisted auto mode, and missing locale; no document overflow or runtime errors. Actual current Codex-shell locale emission has not been directly observed.
+- Installed 1.3.0 from the local marketplace and verified the cached panel hash equals reviewed source. Reopen the panel or restart Codex to load the new resource.

@@ -577,6 +577,53 @@ describe('UI Bilingual i18n & Acceptance Tests', () => {
     });
   });
 
+  describe('Follow Codex language mode', () => {
+    it('uses host locale over browser language and follows partial host changes without extra requests', async () => {
+      const h = createPanelHarness({ navigatorLanguages: ['en-US'] });
+      assert.equal(h.el('lang-select').value, 'auto');
+      assert.equal(h.storageMap.has('agy_quota_lang'), false, 'Automatic detection is not a manual preference');
+      const init = h.output.find(x => x.method === 'ui/initialize');
+      await h.dispatch({ id: init.id, result: { hostContext: { locale: 'zh-Hans-CN', theme: 'light' } } });
+      assert.equal(h.el('html').getAttribute('lang'), 'zh-CN');
+      const call = h.output.find(x => x.method === 'tools/call');
+      await h.dispatch({ id: call.id, result: { structuredContent: h.status() } });
+      const calls = () => h.output.filter(x => x.method === 'tools/call').length;
+      const count = calls();
+      await h.dispatch({ method: 'ui/notifications/host-context-changed', params: { locale: 'en-GB' } });
+      assert.equal(h.el('html').getAttribute('lang'), 'en');
+      assert.ok(h.el('quota-grid').innerHTML.includes('Weekly Limit'));
+      await h.dispatch({ method: 'ui/notifications/host-context-changed', params: { theme: 'dark' } });
+      assert.equal(h.el('html').getAttribute('lang'), 'en', 'Theme-only changes retain the last host locale');
+      assert.equal(calls(), count);
+    });
+    it('preserves manual overrides, remembers auto mode, and uses the most recent host locale when re-enabled', async () => {
+      const h = createPanelHarness({ savedLang: 'en', navigatorLanguages: ['en-US'] });
+      const init = h.output.find(x => x.method === 'ui/initialize');
+      await h.dispatch({ id: init.id, result: { hostContext: { locale: 'zh-CN' } } });
+      assert.equal(h.el('html').getAttribute('lang'), 'en');
+      h.el('lang-select').dispatchEvent('change', { target: { value: 'auto' } });
+      assert.equal(h.el('html').getAttribute('lang'), 'zh-CN');
+      assert.equal(h.storageMap.get('agy_quota_lang'), 'auto');
+      h.el('lang-select').dispatchEvent('change', { target: { value: 'en' } });
+      await h.dispatch({ method: 'ui/notifications/host-context-changed', params: { hostContext: { locale: 'zh-TW' } } });
+      assert.equal(h.el('html').getAttribute('lang'), 'en');
+      assert.equal(h.storageMap.get('agy_quota_lang'), 'en');
+      h.el('lang-select').dispatchEvent('change', { target: { value: 'auto' } });
+      assert.equal(h.el('html').getAttribute('lang'), 'zh-CN');
+    });
+    it('falls back for absent or malformed host locales and works with blocked storage', async () => {
+      const h = createPanelHarness({ savedLang: 'auto', blockStorage: true, navigatorLanguages: ['zh-CN'] });
+      const init = h.output.find(x => x.method === 'ui/initialize');
+      await h.dispatch({ id: init.id, result: { hostContext: {} } });
+      assert.equal(h.el('html').getAttribute('lang'), 'zh-CN');
+      await h.dispatch({ method: 'ui/notifications/host-context-changed', params: { locale: 'en-US' } });
+      assert.equal(h.el('html').getAttribute('lang'), 'en');
+      await h.dispatch({ method: 'ui/notifications/host-context-changed', params: { locale: '<invalid>' } });
+      assert.equal(h.el('html').getAttribute('lang'), 'zh-CN');
+      assert.equal(h.el('lang-select').value, 'auto');
+    });
+  });
+
   describe('Errors across language changes', () => {
     it('preserves and translates tool errors over cached ready data, and keeps dismissed errors hidden', async () => {
       const h = createPanelHarness({ savedLang: 'en' });

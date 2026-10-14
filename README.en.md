@@ -26,7 +26,8 @@ Quota comes from the local `agy /usage` command. The panel follows the host's li
 
 - **Two quota windows**: remaining weekly and five-hour percentages grouped by model, with reset times in Beijing time (UTC+8) and countdowns.
 - **Embedded GUI**: loads inside Codex through MCP Apps, with sidebar and chat panel entry points, narrow layouts, and light and dark themes.
-- **Chinese and English**: choose **中文 / English** at the top of the panel to switch instantly. Your preference is saved when local storage is available; the initial language follows the browser. Switching still works for the current panel if the host blocks storage.
+- **Chinese and English**: choose **中文 / English** at the top of the panel to switch instantly. Your preference is saved when local storage is available; the initial language is selected automatically. Switching still works for the current panel if the host blocks storage.
+- **Follow Codex**: the native panel can use the host's `hostContext.locale` and respond to language-change notifications. This optional field falls back to browser language when unavailable; manual Chinese/English overrides remain unchanged. New users start in follow mode, and existing users can select it at the top of the panel.
 - **Accurate task records**: explicitly reported Supervisor states and input/output token counts. Missing counts appear as “未提供” (not provided); no values are fabricated.
 - **Caching and recovery**: collects quota every 60 seconds and reads the cache every 5 seconds in the panel. Connection errors retain the last valid quota and mark it as stale.
 
