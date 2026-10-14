@@ -341,7 +341,7 @@ describe('Runtime Bridge node:vm Regression Tests', () => {
     const h = createHarness();
     const init = h.output.find(x => x.method === 'ui/initialize');
     assert.ok(init, 'App should send ui/initialize');
-    assert.equal(init.params.appInfo.version, '1.1.0', 'appInfo version should be 1.1.0');
+    assert.equal(init.params.appInfo.version, JSON.parse(fs.readFileSync(path.join(PROJECT_ROOT, 'package.json'), 'utf8')).version, 'appInfo version should match package version');
 
     await h.dispatch({
       id: init.id,
@@ -615,5 +615,102 @@ describe('Runtime Bridge node:vm Regression Tests', () => {
 
     // 5. Absent counts rendered as '未提供'
     assert.ok(tableHtml.includes('<td>未提供</td>'), 'Absent usage must display 未提供');
+  });
+
+  it('supports instant bilingual language switching without extra network calls, updating lang, titles, countdowns, and token labels', async () => {
+    const h = createHarness();
+    const init = h.output.find(x => x.method === 'ui/initialize');
+    await h.dispatch({
+      id: init.id,
+      result: { protocolVersion: '2026-01-26', hostCapabilities: {}, hostContext: {} }
+    });
+
+    const initialToolCall = h.output.find(x => x.method === 'tools/call');
+
+    const tasks = [
+      {
+        id: 'task-1',
+        model: 'gemini-3.8-flash-high',
+        status: 'completed',
+        usage: { inputTokens: 0, outputTokens: 0 }
+      },
+      {
+        id: 'task-2',
+        model: 'gemini-3.8-flash-high',
+        status: 'running',
+        usage: { inputTokens: 500 }
+      },
+      {
+        id: 'task-3',
+        model: 'gemini-3.8-flash-high',
+        status: 'queued'
+      }
+    ];
+
+    await h.dispatch({
+      id: initialToolCall.id,
+      result: { structuredContent: h.status(60, null, tasks) }
+    });
+
+    // Baseline Chinese check
+    assert.equal(h.el('html').getAttribute('lang'), 'zh-CN');
+    assert.equal(h.el('conn-text').textContent, '正常 (就绪)');
+    assert.ok(h.el('tasks-body').innerHTML.includes('未提供'));
+
+    const rpcCountBeforeSwitch = h.output.length;
+
+    // Switch to English
+    const langSelect = h.el('lang-select');
+    langSelect.value = 'en';
+    langSelect.dispatchEvent('change', { target: { value: 'en' } });
+    await h.tick();
+
+    // 1. Language attribute updated
+    assert.equal(h.el('html').getAttribute('lang'), 'en');
+
+    // 2. Connection badge in English
+    assert.equal(h.el('conn-text').textContent, 'Normal (Ready)');
+
+    // 3. Quota grid in English
+    const quotaHtml = h.el('quota-grid').innerHTML;
+    assert.ok(quotaHtml.includes('Gemini Models'), 'Model group should be in English');
+    assert.ok(quotaHtml.includes('Weekly Limit'), 'Window label should be in English');
+    assert.ok(quotaHtml.includes('Reset in:'), 'Countdown should be in English');
+    assert.ok(quotaHtml.includes('UTC+8'), 'English format should explicitly include UTC+8');
+
+    // 4. Tasks table in English
+    const tableEn = h.el('tasks-body').innerHTML;
+    assert.ok(tableEn.includes('<td>0 / 0</td>'), 'Exact zero should still be 0 / 0');
+    assert.ok(tableEn.includes('<td>500 / Not provided</td>'), 'Partial token should show Not provided');
+    assert.ok(tableEn.includes('<td>Not provided</td>'), 'Missing token should show Not provided');
+    assert.ok(tableEn.includes('Completed'), 'Status should be translated to Completed');
+    assert.ok(tableEn.includes('Running'), 'Status should be translated to Running');
+    assert.ok(tableEn.includes('Queued'), 'Status should be translated to Queued');
+
+    // 5. No extra network calls triggered by language switch
+    assert.equal(h.output.length, rpcCountBeforeSwitch, 'Language switch must not send extra RPC requests');
+
+    // 6. Test inFlight and cooldown state persistence across switch
+    h.el('refresh-btn').dispatchEvent('click');
+    assert.equal(h.el('refresh-btn-text').textContent, 'Refreshing...');
+
+    // Resolve the refresh tool call
+    const refreshToolCall = h.output.find(x => x.method === 'tools/call' && x.params?.arguments?.force_refresh === true);
+    assert.ok(refreshToolCall, 'Force refresh tool call must be initiated');
+    await h.dispatch({
+      id: refreshToolCall.id,
+      result: { structuredContent: h.status(60, null, tasks) }
+    });
+
+    assert.ok(h.el('refresh-btn-text').textContent.includes('Cooldown (10s)'));
+
+    // Switch back to Chinese during active cooldown
+    langSelect.value = 'zh-CN';
+    langSelect.dispatchEvent('change', { target: { value: 'zh-CN' } });
+    await h.tick();
+
+    assert.equal(h.el('html').getAttribute('lang'), 'zh-CN');
+    assert.ok(h.el('refresh-btn-text').textContent.includes('冷却中 (10s)'));
+    assert.ok(h.el('tasks-body').innerHTML.includes('未提供'));
   });
 });

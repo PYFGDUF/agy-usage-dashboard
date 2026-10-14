@@ -13,19 +13,20 @@ Quota comes from the local `agy /usage` command. The panel follows the host's li
 [Quick start](#quick-start) · [Tasks and tokens](#tasks-and-tokens) · [MCP tools](#mcp-tools) · [Development and verification](#development-and-verification)
 
 <picture>
-  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="./assets/readme/panel-mobile-dark.png">
-  <source media="(max-width: 600px)" srcset="./assets/readme/panel-mobile-light.png">
-  <source media="(prefers-color-scheme: dark)" srcset="./assets/readme/panel-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="./assets/readme/panel-light.png">
-  <img src="./assets/readme/panel-light.png" width="100%" alt="Embedded AGY panel: weekly and five-hour quota for Gemini and Claude/GPT, reset countdowns, and task records">
+  <source media="(max-width: 600px) and (prefers-color-scheme: dark)" srcset="./assets/readme/panel-mobile-dark-en.png">
+  <source media="(max-width: 600px)" srcset="./assets/readme/panel-mobile-light-en.png">
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/readme/panel-dark-en.png">
+  <source media="(prefers-color-scheme: light)" srcset="./assets/readme/panel-light-en.png">
+  <img src="./assets/readme/panel-light-en.png" width="100%" alt="Embedded AGY panel: weekly and five-hour quota for Gemini and Claude/GPT, reset countdowns, and task records">
 </picture>
 
-> Browser-rendered previews of the panel component using sample data. These are not screenshots of the Codex window or the current account's quota. The panel currently uses Chinese labels.
+> Browser-rendered previews of the panel component using sample data. These are not screenshots of the Codex window or the current account's quota.
 
 ## Usage at a glance
 
 - **Two quota windows**: remaining weekly and five-hour percentages grouped by model, with reset times in Beijing time (UTC+8) and countdowns.
 - **Embedded GUI**: loads inside Codex through MCP Apps, with sidebar and chat panel entry points, narrow layouts, and light and dark themes.
+- **Chinese and English**: choose **中文 / English** at the top of the panel to switch instantly. Your preference is saved when local storage is available; the initial language follows the browser. Switching still works for the current panel if the host blocks storage.
 - **Accurate task records**: explicitly reported Supervisor states and input/output token counts. Missing counts appear as “未提供” (not provided); no values are fabricated.
 - **Caching and recovery**: collects quota every 60 seconds and reads the cache every 5 seconds in the panel. Connection errors retain the last valid quota and mark it as stale.
 

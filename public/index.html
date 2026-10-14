@@ -17,7 +17,7 @@
           <span class="logo-title">Usage</span>
         </div>
         <div class="header-badges">
-          <span class="badge badge-subtle">Supervisor 集成</span>
+          <span id="supervisor-badge" class="badge badge-subtle">Supervisor 集成</span>
           <span id="conn-badge" class="badge badge-status badge-unavailable" role="status" aria-live="polite">
             <span class="status-dot"></span>
             <span id="conn-text">连接中...</span>
@@ -25,10 +25,14 @@
         </div>
       </div>
       <div class="header-actions">
-        <label class="toggle-control" title="每 2 秒自动同步界面显示，后台定时 60 秒轮询">
+        <select id="lang-select" class="lang-select" aria-label="选择语言">
+          <option value="zh-CN">中文</option>
+          <option value="en">English</option>
+        </select>
+        <label class="toggle-control" id="auto-refresh-label" title="每 2 秒自动同步界面显示，后台定时 60 秒轮询">
           <input type="checkbox" id="auto-refresh-toggle" checked>
           <span class="toggle-track"></span>
-          <span class="toggle-label">自动更新显示</span>
+          <span class="toggle-label" id="auto-refresh-text">自动更新显示</span>
         </label>
         <button id="refresh-btn" class="btn btn-primary" aria-label="手动刷新配额">
           <svg class="icon spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -40,13 +44,13 @@
     </header>
 
     <!-- Subheader / Status Bar -->
-    <section class="status-bar" aria-label="状态信息">
+    <section class="status-bar" id="status-bar-section" aria-label="状态信息">
       <div class="status-item">
-        <span class="status-label">数据更新时间:</span>
+        <span class="status-label" id="updated-at-label">数据更新时间:</span>
         <span id="updated-at-text" class="status-value">-</span>
       </div>
       <div class="status-item">
-        <span class="status-label">新鲜度:</span>
+        <span class="status-label" id="freshness-label">新鲜度:</span>
         <span id="freshness-text" class="status-value freshness-ok">等待数据</span>
       </div>
       <div id="error-banner" class="error-banner hidden" role="alert">
@@ -62,7 +66,7 @@
       <section class="section quota-section" aria-labelledby="quota-heading">
         <div class="section-header">
           <h2 id="quota-heading">模型配额监控</h2>
-          <span class="section-note">本地配额状态实时同步，低余量阈值 ≤ 20%</span>
+          <span class="section-note" id="quota-note">本地配额状态实时同步，低余量阈值 ≤ 20%</span>
         </div>
 
         <div id="quota-grid" class="quota-grid">
@@ -87,7 +91,7 @@
             <h2 id="tasks-heading">Supervisor 显式报告事件</h2>
             <span class="badge badge-count" id="task-count-badge">0</span>
           </div>
-          <span class="section-note">仅展示由 Supervisor 显式上报的任务事件，不自动枚举后台桥接任务</span>
+          <span class="section-note" id="tasks-note">仅展示由 Supervisor 显式上报的任务事件，不自动枚举后台桥接任务</span>
         </div>
 
         <div class="card tasks-card">
@@ -99,20 +103,20 @@
               <line x1="16" y1="17" x2="8" y2="17"/>
               <polyline points="10 9 9 9 8 9"/>
             </svg>
-            <p>暂无 Supervisor 任务事件</p>
-            <span class="tasks-empty-sub">当 Supervisor 任务通过 MCP 或 API 显式上报时将显示于此</span>
+            <p id="tasks-empty-title">暂无 Supervisor 任务事件</p>
+            <span class="tasks-empty-sub" id="tasks-empty-sub">当 Supervisor 任务通过 MCP 或 API 显式上报时将显示于此</span>
           </div>
 
           <div id="tasks-table-wrap" class="tasks-table-wrap hidden">
             <table class="tasks-table">
               <thead>
                 <tr>
-                  <th scope="col">任务 ID</th>
-                  <th scope="col">模型</th>
-                  <th scope="col">状态</th>
-                  <th scope="col">Token 消耗 (输入 / 输出)</th>
-                  <th scope="col">首次上报时间 (CST)</th>
-                  <th scope="col">完成上报时间 (CST)</th>
+                  <th scope="col" id="th-task-id">任务 ID</th>
+                  <th scope="col" id="th-model">模型</th>
+                  <th scope="col" id="th-status">状态</th>
+                  <th scope="col" id="th-tokens">Token 消耗 (输入 / 输出)</th>
+                  <th scope="col" id="th-time-first">首次上报时间 (CST)</th>
+                  <th scope="col" id="th-time-done">完成上报时间 (CST)</th>
                 </tr>
               </thead>
               <tbody id="tasks-table-body">
@@ -125,9 +129,9 @@
 
     <!-- Footer -->
     <footer class="app-footer">
-      <span>服务地址: <code>http://127.0.0.1:8766</code></span>
-      <span>时区: <code>Asia/Shanghai (CST)</code></span>
-      <span>Antigravity 本地配额仪表盘</span>
+      <span id="footer-server">服务地址: <code>http://127.0.0.1:8766</code></span>
+      <span id="footer-tz">时区: <code>Asia/Shanghai (CST)</code></span>
+      <span id="footer-desc">Antigravity 本地配额仪表盘</span>
     </footer>
   </div>
 

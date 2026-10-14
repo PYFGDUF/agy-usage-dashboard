@@ -25,4 +25,4 @@ export const MAX_BODY_SIZE_BYTES = 100 * 1024;
 
 export const DEFAULT_MODEL_ID = 'gemini-3.8-flash-high';
 export const APP_ID = 'agy-usage-dashboard';
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION = '1.2.0';

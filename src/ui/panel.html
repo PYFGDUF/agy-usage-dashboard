@@ -256,6 +256,30 @@
       flex-wrap: wrap;
     }
 
+    .lang-select {
+      background-color: var(--bg-surface-elevated);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 3px 6px;
+      font-size: 11.5px;
+      font-weight: 500;
+      cursor: pointer;
+      line-height: 1.3;
+      transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+    }
+
+    .lang-select:hover {
+      background-color: var(--bg-surface-hover);
+      border-color: var(--border-strong);
+      color: var(--text-primary);
+    }
+
+    .lang-select:focus-visible {
+      outline: 2px solid var(--focus-ring);
+      outline-offset: 2px;
+    }
+
     .toggle-wrap {
       display: inline-flex;
       align-items: center;
@@ -691,7 +715,7 @@
     <header class="panel-header">
       <div class="header-left">
         <div class="brand-title">
-          <span>AGY</span><span class="brand-accent">/</span><span>用量监控</span>
+          <span>AGY</span><span class="brand-accent">/</span><span id="brand-title-text">用量监控</span>
         </div>
         <div class="header-status-group">
           <div id="conn-badge" class="badge badge-ready">
@@ -702,9 +726,13 @@
         </div>
       </div>
       <div class="header-controls">
-        <label class="toggle-wrap" title="每5秒自动拉取缓存数据">
+        <select id="lang-select" class="lang-select" aria-label="选择语言">
+          <option value="zh-CN">中文</option>
+          <option value="en">English</option>
+        </select>
+        <label class="toggle-wrap" id="auto-refresh-label" title="每5秒自动拉取缓存数据">
           <input type="checkbox" id="auto-refresh-toggle" checked>
-          <span>自动同步</span>
+          <span id="auto-refresh-text">自动同步</span>
         </label>
         <button id="refresh-btn" class="btn" title="立即发起配额刷新 (10秒冷却)">
           <span class="btn-icon">↻</span>
@@ -722,7 +750,7 @@
     <!-- Quota Grid -->
     <main id="quota-grid" class="quota-grid">
       <div class="card" style="text-align: center; color: var(--text-muted); padding: 30px;">
-        <p>正在读取配额...</p>
+        <p id="quota-loading-text">正在读取配额...</p>
       </div>
     </main>
 
@@ -730,10 +758,10 @@
     <section class="tasks-section">
       <div class="tasks-header">
         <div class="tasks-title-wrap">
-          <span class="tasks-title">Supervisor 任务记录</span>
+          <span id="tasks-title" class="tasks-title">Supervisor 任务记录</span>
           <span id="tasks-count" class="tasks-count-pill">0</span>
         </div>
-        <span class="tasks-note">显式上报的任务记录</span>
+        <span id="tasks-note" class="tasks-note">显式上报的任务记录</span>
       </div>
       <div id="tasks-empty" class="tasks-empty">
         暂无显式上报的任务事件
@@ -742,11 +770,11 @@
         <table class="tasks-table">
           <thead>
             <tr>
-              <th>任务 ID</th>
-              <th>模型</th>
-              <th>状态</th>
-              <th>Token (入 / 出)</th>
-              <th>上报时间 (CST)</th>
+              <th id="th-task-id">任务 ID</th>
+              <th id="th-model">模型</th>
+              <th id="th-status">状态</th>
+              <th id="th-tokens">Token (入 / 出)</th>
+              <th id="th-time">上报时间 (CST)</th>
             </tr>
           </thead>
           <tbody id="tasks-body"></tbody>
@@ -757,7 +785,7 @@
     <!-- Footer Meta -->
     <footer class="footer-meta">
       <span id="updated-at-text">更新时间: -</span>
-      <span>定时采集 · 北京时间 (CST)</span>
+      <span id="footer-note">定时采集 · 北京时间 (CST)</span>
     </footer>
   </div>
 
@@ -782,6 +810,7 @@
       const tasksBody = document.getElementById('tasks-body');
       const updatedAtText = document.getElementById('updated-at-text');
       const appRoot = document.getElementById('app-root');
+      const langSelect = document.getElementById('lang-select');
 
       // State
       let isInitialized = false;
@@ -798,6 +827,206 @@
       let resizeDebounce = null;
       let resizeObserver = null;
       let lastKnownStatus = null;
+      let currentLang = 'zh-CN';
+
+      const STORAGE_KEY = 'agy_quota_lang';
+
+      const I18N = {
+        'zh-CN': {
+          docTitle: 'AGY 用量面板',
+          brandTitle: '用量监控',
+          langSelectLabel: '选择语言',
+          connConnecting: '准备连接...',
+          connReady: '正常 (就绪)',
+          connRefreshing: '正在刷新...',
+          connError: '刷新异常',
+          staleBadge: '数据已过期 (>120s)',
+          autoSync: '自动同步',
+          autoSyncTitle: '每5秒自动拉取缓存数据',
+          refreshNow: '立即刷新',
+          refreshing: '刷新中...',
+          cooldown: (s) => `冷却中 (${s}s)`,
+          refreshBtnTitle: '立即发起配额刷新 (10秒冷却)',
+          errorDefault: '执行异常',
+          errorClose: '关闭',
+          quotaLoading: '正在读取配额...',
+          quotaEmpty: '暂无配额窗口数据，可点击右上角「立即刷新」',
+          quotaGeneralGroup: '通用模型',
+          quotaGeminiGroup: 'Gemini 模型',
+          quotaClaudeGptGroup: 'Claude 与 GPT 模型',
+          quotaWindowsCount: (n) => `${n} 个配额窗口`,
+          lowAllowanceTag: '额度紧张 ≤20%',
+          progressAriaLabel: (label, percent) => `${label} 剩余 ${percent}%`,
+          resetPrefix: '重置: ',
+          countdownExpired: '已到期 (等待下次刷新)',
+          countdownDays: (d, h, m) => `倒计时: ${d}天 ${h}小时 ${m}分`,
+          countdownHours: (h, m, s) => `倒计时: ${h}小时 ${m}分 ${s}秒`,
+          tasksTitle: 'Supervisor 任务记录',
+          tasksNote: '显式上报的任务记录',
+          tasksEmpty: '暂无显式上报的任务事件',
+          thTaskId: '任务 ID',
+          thModel: '模型',
+          thStatus: '状态',
+          thTokens: 'Token (入 / 出)',
+          thTime: '上报时间 (CST)',
+          statusQueued: '排队中',
+          statusRunning: '运行中',
+          statusCompleted: '已完成',
+          statusFailed: '失败',
+          statusUnknown: '未知',
+          tokensMissing: '未提供',
+          updatedAtPrefix: '更新时间: ',
+          footerNote: '定时采集 · 北京时间 (CST)',
+          errHostConnect: '宿主界面连接失败: ',
+          errHostTimeout: '超时或未在支持的环境中运行',
+          errToolFailed: '获取配额失败',
+          errToolMissingStructured: '工具返回内容缺少 structuredContent',
+          errQueryFailed: '查询失败',
+          errToolCallError: '工具调用报错',
+          errNotInIframe: '未在宿主应用 iframe 中运行',
+          errTimeout: (m, ms) => `请求 ${m} 超时 (${ms}ms)`,
+          windowWeeklyRemaining: '每周限额剩余',
+          windowFiveHourRemaining: '5小时限额剩余',
+          windowWeekly: '每周限额',
+          windowFiveHour: '5小时限额'
+        },
+        'en': {
+          docTitle: 'AGY Usage Panel',
+          brandTitle: 'Usage Monitor',
+          langSelectLabel: 'Select language',
+          connConnecting: 'Connecting...',
+          connReady: 'Normal (Ready)',
+          connRefreshing: 'Refreshing...',
+          connError: 'Refresh Error',
+          staleBadge: 'Data Stale (>120s)',
+          autoSync: 'Auto-sync',
+          autoSyncTitle: 'Auto-sync cached data every 5 seconds',
+          refreshNow: 'Refresh Now',
+          refreshing: 'Refreshing...',
+          cooldown: (s) => `Cooldown (${s}s)`,
+          refreshBtnTitle: 'Trigger quota refresh (10s cooldown)',
+          errorDefault: 'Execution Error',
+          errorClose: 'Close',
+          quotaLoading: 'Loading quota...',
+          quotaEmpty: 'No quota window data. Click "Refresh Now" at top right',
+          quotaGeneralGroup: 'General Models',
+          quotaGeminiGroup: 'Gemini Models',
+          quotaClaudeGptGroup: 'Claude & GPT Models',
+          quotaWindowsCount: (n) => `${n} quota window${n === 1 ? '' : 's'}`,
+          lowAllowanceTag: 'Low Quota ≤20%',
+          progressAriaLabel: (label, percent) => `${label} remaining ${percent}%`,
+          resetPrefix: 'Resets: ',
+          countdownExpired: 'Expired (awaiting refresh)',
+          countdownDays: (d, h, m) => `Reset in: ${d}d ${h}h ${m}m`,
+          countdownHours: (h, m, s) => `Reset in: ${h}h ${m}m ${s}s`,
+          tasksTitle: 'Supervisor Task History',
+          tasksNote: 'Explicitly reported task events',
+          tasksEmpty: 'No explicitly reported task events',
+          thTaskId: 'Task ID',
+          thModel: 'Model',
+          thStatus: 'Status',
+          thTokens: 'Tokens (In / Out)',
+          thTime: 'Report Time (UTC+8)',
+          statusQueued: 'Queued',
+          statusRunning: 'Running',
+          statusCompleted: 'Completed',
+          statusFailed: 'Failed',
+          statusUnknown: 'Unknown',
+          tokensMissing: 'Not provided',
+          updatedAtPrefix: 'Updated: ',
+          footerNote: 'Periodic collection · Beijing Time (UTC+8 / CST)',
+          errHostConnect: 'Host connection failed: ',
+          errHostTimeout: 'Timeout or not running in supported environment',
+          errToolFailed: 'Failed to get quota',
+          errToolMissingStructured: 'Tool response missing structuredContent',
+          errQueryFailed: 'Query failed',
+          errToolCallError: 'Tool call error',
+          errNotInIframe: 'Not running inside host application iframe',
+          errTimeout: (m, ms) => `Request ${m} timed out (${ms}ms)`,
+          windowWeeklyRemaining: 'Weekly Limit Remaining',
+          windowFiveHourRemaining: '5-Hour Limit Remaining',
+          windowWeekly: 'Weekly Limit',
+          windowFiveHour: '5-Hour Limit'
+        }
+      };
+
+      // Defensive localStorage access
+      function getStorage() {
+        try {
+          if (typeof window !== 'undefined' && window.localStorage) {
+            const testKey = '__agy_storage_test__';
+            window.localStorage.setItem(testKey, '1');
+            window.localStorage.removeItem(testKey);
+            return window.localStorage;
+          }
+        } catch {
+          // Sandbox or security denied
+        }
+        return null;
+      }
+
+      function normalizeLang(lang) {
+        if (!lang || typeof lang !== 'string') return null;
+        const l = lang.trim().toLowerCase();
+        if (l.startsWith('zh')) return 'zh-CN';
+        if (l.startsWith('en')) return 'en';
+        return null;
+      }
+
+      function resolveInitialLanguage() {
+        // 1. Saved valid preference
+        const storage = getStorage();
+        if (storage) {
+          try {
+            const saved = storage.getItem(STORAGE_KEY);
+            const normalizedSaved = normalizeLang(saved);
+            if (normalizedSaved) {
+              return normalizedSaved;
+            }
+          } catch {
+            // Ignore
+          }
+        }
+
+        // 2. Navigator language(s) (zh=>zh-CN, others English, missing defaults Chinese)
+        try {
+          let nav = null;
+          if (typeof window !== 'undefined' && window.navigator) {
+            nav = window.navigator;
+          } else if (typeof navigator !== 'undefined') {
+            nav = navigator;
+          }
+          if (nav) {
+            let primary = null;
+            if (Array.isArray(nav.languages) && nav.languages.length > 0) {
+              primary = nav.languages.find(l => typeof l === 'string' && l.trim().length > 0);
+            } else if (typeof nav.language === 'string' && nav.language.trim().length > 0) {
+              primary = nav.language;
+            }
+            if (primary) {
+              const lower = primary.trim().toLowerCase();
+              if (lower.startsWith('zh')) return 'zh-CN';
+              return 'en';
+            }
+          }
+        } catch {
+          // Ignore
+        }
+
+        // 3. Missing defaults Chinese
+        return 'zh-CN';
+      }
+
+      function saveLanguagePreference(lang) {
+        const storage = getStorage();
+        if (storage) {
+          try {
+            storage.setItem(STORAGE_KEY, lang);
+          } catch {
+            // Storage quota or denied
+          }
+        }
+      }
 
       // Escape HTML
       function escapeHtml(str) {
@@ -810,13 +1039,16 @@
           .replace(/'/g, '&#39;');
       }
 
-      // Format ISO string to Asia/Shanghai CST
-      function formatShanghaiTime(isoString) {
+      // Format ISO string to Asia/Shanghai CST (UTC+8 in English)
+      function formatShanghaiTime(isoString, lang = currentLang) {
         if (!isoString) return '-';
         try {
           const d = new Date(isoString);
           if (isNaN(d.getTime())) return String(isoString);
-          return new Intl.DateTimeFormat('zh-CN', {
+          const isEn = lang === 'en';
+          const locale = isEn ? 'en-US' : 'zh-CN';
+          const suffix = isEn ? ' UTC+8' : ' CST';
+          return new Intl.DateTimeFormat(locale, {
             timeZone: 'Asia/Shanghai',
             year: 'numeric',
             month: '2-digit',
@@ -825,18 +1057,19 @@
             minute: '2-digit',
             second: '2-digit',
             hour12: false
-          }).format(d) + ' CST';
+          }).format(d) + suffix;
         } catch {
           return String(isoString);
         }
       }
 
       // Format countdown
-      function getCountdownInfo(isoString) {
+      function getCountdownInfo(isoString, lang = currentLang) {
+        const dict = I18N[lang] || I18N['zh-CN'];
         if (!isoString) return { text: '-', isPassed: false };
         const diffMs = new Date(isoString).getTime() - Date.now();
         if (diffMs <= 0) {
-          return { text: '已到期 (等待下次刷新)', isPassed: true };
+          return { text: dict.countdownExpired, isPassed: true };
         }
         const totalSeconds = Math.floor(diffMs / 1000);
         const hours = Math.floor(totalSeconds / 3600);
@@ -846,26 +1079,28 @@
         if (hours >= 24) {
           const days = Math.floor(hours / 24);
           const remHours = hours % 24;
-          return { text: `倒计时: ${days}天 ${remHours}小时 ${mins}分`, isPassed: false };
+          return { text: dict.countdownDays(days, remHours, mins), isPassed: false };
         }
-        return { text: `倒计时: ${hours}小时 ${mins}分 ${secs}秒`, isPassed: false };
+        return { text: dict.countdownHours(hours, mins, secs), isPassed: false };
       }
 
-      function formatWindowLabel(name) {
+      function formatWindowLabel(name, lang = currentLang) {
         if (!name) return '';
         const lower = name.toLowerCase();
-        if (lower.includes('weekly') && lower.includes('remaining')) return '每周限额剩余';
-        if ((lower.includes('five hour') || lower.includes('5-hour') || lower.includes('5 hour')) && lower.includes('remaining')) return '5小时限额剩余';
-        if (lower.includes('weekly')) return '每周限额';
-        if (lower.includes('five hour') || lower.includes('5-hour') || lower.includes('5 hour')) return '5小时限额';
+        const dict = I18N[lang] || I18N['zh-CN'];
+        if (lower.includes('weekly') && lower.includes('remaining')) return dict.windowWeeklyRemaining;
+        if ((lower.includes('five hour') || lower.includes('5-hour') || lower.includes('5 hour')) && lower.includes('remaining')) return dict.windowFiveHourRemaining;
+        if (lower.includes('weekly')) return dict.windowWeekly;
+        if (lower.includes('five hour') || lower.includes('5-hour') || lower.includes('5 hour')) return dict.windowFiveHour;
         return name;
       }
 
-      function formatGroupLabel(name) {
-        if (!name) return '通用模型';
+      function formatGroupLabel(name, lang = currentLang) {
+        const dict = I18N[lang] || I18N['zh-CN'];
+        if (!name) return dict.quotaGeneralGroup;
         const lower = name.toLowerCase();
-        if (lower.includes('gemini')) return 'Gemini 模型';
-        if (lower.includes('claude') || lower.includes('gpt')) return 'Claude 与 GPT 模型';
+        if (lower.includes('gemini')) return dict.quotaGeminiGroup;
+        if (lower.includes('claude') || lower.includes('gpt')) return dict.quotaClaudeGptGroup;
         return name;
       }
 
@@ -888,31 +1123,135 @@
       // Update manual refresh button UI state
       function updateRefreshBtnUI() {
         if (disposed) return;
+        const dict = I18N[currentLang] || I18N['zh-CN'];
         if (inFlight) {
           refreshBtn.disabled = true;
-          refreshBtnText.textContent = '刷新中...';
+          refreshBtnText.textContent = dict.refreshing;
         } else if (cooldownSeconds > 0) {
           refreshBtn.disabled = true;
-          refreshBtnText.textContent = `冷却中 (${cooldownSeconds}s)`;
+          refreshBtnText.textContent = dict.cooldown(cooldownSeconds);
         } else {
           refreshBtn.disabled = false;
-          refreshBtnText.textContent = '立即刷新';
+          refreshBtnText.textContent = dict.refreshNow;
         }
+      }
+
+      // Set language & update UI immediately
+      function setLanguage(lang) {
+        if (lang !== 'zh-CN' && lang !== 'en') return;
+        currentLang = lang;
+        saveLanguagePreference(lang);
+
+        const dict = I18N[currentLang] || I18N['zh-CN'];
+        if (document.documentElement) {
+          document.documentElement.lang = currentLang;
+          if (typeof document.documentElement.setAttribute === 'function') {
+            document.documentElement.setAttribute('lang', currentLang);
+          }
+        }
+        document.title = dict.docTitle;
+
+        if (langSelect) {
+          if (langSelect.value !== currentLang) {
+            langSelect.value = currentLang;
+          }
+          if (typeof langSelect.setAttribute === 'function') {
+            langSelect.setAttribute('aria-label', dict.langSelectLabel);
+          }
+        }
+
+        // Update static DOM elements if present
+        const brandEl = document.getElementById('brand-title-text');
+        if (brandEl) brandEl.textContent = dict.brandTitle;
+
+        const autoRefLabel = document.getElementById('auto-refresh-label');
+        if (autoRefLabel) autoRefLabel.title = dict.autoSyncTitle;
+
+        const autoRefText = document.getElementById('auto-refresh-text');
+        if (autoRefText) autoRefText.textContent = dict.autoSync;
+
+        if (refreshBtn) refreshBtn.title = dict.refreshBtnTitle;
+        if (errorDismiss) {
+          errorDismiss.title = dict.errorClose;
+          if (typeof errorDismiss.setAttribute === 'function') {
+            errorDismiss.setAttribute('aria-label', dict.errorClose);
+          }
+        }
+
+        const staleEl = document.getElementById('stale-badge');
+        if (staleEl) staleEl.textContent = dict.staleBadge;
+
+        const quotaLoadingEl = document.getElementById('quota-loading-text');
+        if (quotaLoadingEl) quotaLoadingEl.textContent = dict.quotaLoading;
+
+        const tasksTitleEl = document.getElementById('tasks-title');
+        if (tasksTitleEl) tasksTitleEl.textContent = dict.tasksTitle;
+
+        const tasksNoteEl = document.getElementById('tasks-note');
+        if (tasksNoteEl) tasksNoteEl.textContent = dict.tasksNote;
+
+        const tasksEmptyEl = document.getElementById('tasks-empty');
+        if (tasksEmptyEl) tasksEmptyEl.textContent = dict.tasksEmpty;
+
+        const thTaskId = document.getElementById('th-task-id');
+        if (thTaskId) thTaskId.textContent = dict.thTaskId;
+
+        const thModel = document.getElementById('th-model');
+        if (thModel) thModel.textContent = dict.thModel;
+
+        const thStatus = document.getElementById('th-status');
+        if (thStatus) thStatus.textContent = dict.thStatus;
+
+        const thTokens = document.getElementById('th-tokens');
+        if (thTokens) thTokens.textContent = dict.thTokens;
+
+        const thTime = document.getElementById('th-time');
+        if (thTime) thTime.textContent = dict.thTime;
+
+        const footerNoteEl = document.getElementById('footer-note');
+        if (footerNoteEl) footerNoteEl.textContent = dict.footerNote;
+
+        // Re-render button state (refreshing / cooldown / ready)
+        updateRefreshBtnUI();
+
+        // Re-render status if cached (without clearing active errors)
+        if (lastKnownStatus) {
+          renderStatus(lastKnownStatus, false);
+        } else {
+          // If no status yet, update initial connection badge text
+          connText.textContent = dict.connConnecting;
+          updatedAtText.textContent = dict.updatedAtPrefix + '-';
+        }
+
+        // Re-render error banner (translates prefix/fallback, preserves visibility and dismissed state)
+        renderError();
+
+        notifySize();
       }
 
       // Send JSON-RPC request to parent
       function sendRpcRequest(method, params, timeoutMs = 20000) {
         if (disposed) {
-          return Promise.reject(new Error('UI resource disposed'));
+          const err = new Error('UI resource disposed');
+          err.code = 'DISPOSED';
+          return Promise.reject(err);
         }
         if (window.parent === window) {
-          return Promise.reject(new Error('未在宿主应用 iframe 中运行'));
+          const dict = I18N[currentLang] || I18N['zh-CN'];
+          const err = new Error(dict.errNotInIframe);
+          err.code = 'NOT_IN_IFRAME';
+          return Promise.reject(err);
         }
         const id = nextRpcId++;
         return new Promise((resolve, reject) => {
           const timer = setTimeout(() => {
             pendingRequests.delete(id);
-            reject(new Error(`请求 ${method} 超时 (${timeoutMs}ms)`));
+            const dict = I18N[currentLang] || I18N['zh-CN'];
+            const err = new Error(dict.errTimeout(method, timeoutMs));
+            err.code = 'TIMEOUT';
+            err.rpcMethod = method;
+            err.timeoutMs = timeoutMs;
+            reject(err);
           }, timeoutMs);
 
           pendingRequests.set(id, { resolve, reject, timer });
@@ -962,36 +1301,81 @@
         }, 100);
       }
 
+      let currentError = null;
+      let isErrorVisible = false;
+
       // Show/Hide error banner
-      function showError(msg) {
+      function showError(desc) {
         if (disposed) return;
-        errorMessage.textContent = msg;
-        errorBanner.classList.remove('hidden');
-        notifySize();
+        if (!desc) {
+          clearError();
+          return;
+        }
+        const descriptor = (typeof desc === 'string')
+          ? { type: 'raw', detail: desc, format: () => desc }
+          : desc;
+        currentError = descriptor;
+        isErrorVisible = true;
+        renderError();
       }
 
       function hideError() {
         if (disposed) return;
-        errorBanner.classList.add('hidden');
+        isErrorVisible = false;
+        if (errorBanner) {
+          errorBanner.classList.add('hidden');
+        }
+        notifySize();
+      }
+
+      function clearError() {
+        if (disposed) return;
+        currentError = null;
+        isErrorVisible = false;
+        if (errorBanner) {
+          errorBanner.classList.add('hidden');
+        }
+        notifySize();
+      }
+
+      function renderError() {
+        if (disposed || !errorBanner || !errorMessage) return;
+        if (!isErrorVisible || !currentError) {
+          errorBanner.classList.add('hidden');
+          return;
+        }
+        const dict = I18N[currentLang] || I18N['zh-CN'];
+        const text = typeof currentError.format === 'function'
+          ? currentError.format(dict)
+          : (currentError.detail || '');
+        errorMessage.textContent = text;
+        errorBanner.classList.remove('hidden');
         notifySize();
       }
 
       errorDismiss.addEventListener('click', hideError);
 
       // Render Status Data
-      function renderStatus(status) {
+      function renderStatus(status, isNewStatus = true) {
         if (disposed || !status) return;
         lastKnownStatus = status;
+        const dict = I18N[currentLang] || I18N['zh-CN'];
 
-        // Render connection error as visible banner if present; otherwise hide error banner
-        const connErr = status.connection?.error;
-        if (connErr) {
-          const errText = typeof connErr === 'string'
-            ? connErr
-            : (connErr.message || JSON.stringify(connErr));
-          showError(errText);
-        } else {
-          hideError();
+        // Only update connection error state if newly arrived status from host
+        if (isNewStatus) {
+          const connErr = status.connection?.error;
+          if (connErr) {
+            const errText = typeof connErr === 'string'
+              ? connErr
+              : (connErr.message || JSON.stringify(connErr));
+            showError({
+              type: 'connection_error',
+              detail: errText,
+              format: () => errText
+            });
+          } else {
+            clearError();
+          }
         }
 
         // 1. Connection state badge
@@ -999,13 +1383,13 @@
         connBadge.className = 'badge';
         if (connState === 'ready') {
           connBadge.classList.add('badge-ready');
-          connText.textContent = '正常 (就绪)';
+          connText.textContent = dict.connReady;
         } else if (connState === 'refreshing') {
           connBadge.classList.add('badge-refreshing');
-          connText.textContent = '正在刷新...';
+          connText.textContent = dict.connRefreshing;
         } else if (connState === 'error') {
           connBadge.classList.add('badge-error');
-          connText.textContent = '刷新异常';
+          connText.textContent = dict.connError;
         } else {
           connBadge.classList.add('badge-ready');
           connText.textContent = connState;
@@ -1013,11 +1397,12 @@
 
         // 2. Freshness & Stale (locally > 120s or server reported)
         const updatedAt = status.usage?.updatedAt;
-        updatedAtText.textContent = `更新时间: ${formatShanghaiTime(updatedAt)}`;
+        updatedAtText.textContent = `${dict.updatedAtPrefix}${formatShanghaiTime(updatedAt, currentLang)}`;
         const isServerStale = !!status.usage?.stale;
         const isLocallyStale = updatedAt ? (Date.now() - new Date(updatedAt).getTime() > 120000) : false;
 
         if (isServerStale || isLocallyStale) {
+          staleBadge.textContent = dict.staleBadge;
           staleBadge.classList.remove('hidden');
         } else {
           staleBadge.classList.add('hidden');
@@ -1028,7 +1413,7 @@
         if (windows.length === 0) {
           quotaGrid.innerHTML = `
             <div class="card" style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 30px;">
-              <p>暂无配额窗口数据，可点击右上角「立即刷新」</p>
+              <p>${escapeHtml(dict.quotaEmpty)}</p>
             </div>
           `;
         } else {
@@ -1047,24 +1432,24 @@
               const rawPercent = (typeof win.remainingPercent === 'number') ? win.remainingPercent : 0;
               const percent = Math.max(0, Math.min(100, rawPercent));
               const isLow = percent <= 20;
-              const countdown = getCountdownInfo(win.resetsAt);
-              const resetCst = formatShanghaiTime(win.resetsAt);
-              const label = formatWindowLabel(win.window);
+              const countdown = getCountdownInfo(win.resetsAt, currentLang);
+              const resetCst = formatShanghaiTime(win.resetsAt, currentLang);
+              const label = formatWindowLabel(win.window, currentLang);
 
               itemsHtml += `
                 <div class="quota-item ${isLow ? 'is-low' : ''}" data-resets-at="${escapeHtml(win.resetsAt || '')}">
                   <div class="quota-meta-row">
                     <span class="window-label">${escapeHtml(label)}</span>
                     <div class="percent-group">
-                      ${isLow ? '<span class="low-warning-tag">额度紧张 ≤20%</span>' : ''}
+                      ${isLow ? `<span class="low-warning-tag">${escapeHtml(dict.lowAllowanceTag)}</span>` : ''}
                       <span class="percent-val">${percent}%</span>
                     </div>
                   </div>
-                  <div class="progress-track" role="progressbar" aria-label="${escapeHtml(label)} 剩余 ${percent}%" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100">
+                  <div class="progress-track" role="progressbar" aria-label="${escapeHtml(dict.progressAriaLabel(label, percent))}" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100">
                     <div class="progress-fill" style="width: ${percent}%;"></div>
                   </div>
                   <div class="quota-sub-meta">
-                    <span>重置: ${escapeHtml(resetCst)}</span>
+                    <span>${escapeHtml(dict.resetPrefix)}${escapeHtml(resetCst)}</span>
                     <span class="countdown-text ${countdown.isPassed ? 'is-passed' : ''}">${escapeHtml(countdown.text)}</span>
                   </div>
                 </div>
@@ -1074,8 +1459,8 @@
             gridHtml += `
               <div class="card">
                 <div class="card-header">
-                  <span class="card-title">${escapeHtml(formatGroupLabel(groupName))}</span>
-                  <span class="card-subtitle">${winList.length} 个配额窗口</span>
+                  <span class="card-title">${escapeHtml(formatGroupLabel(groupName, currentLang))}</span>
+                  <span class="card-subtitle">${escapeHtml(dict.quotaWindowsCount(winList.length))}</span>
                 </div>
                 <div class="quota-items">
                   ${itemsHtml}
@@ -1090,6 +1475,7 @@
         const tasks = Array.isArray(status.tasks) ? status.tasks : [];
         tasksCount.textContent = String(tasks.length);
         if (tasks.length === 0) {
+          tasksEmpty.textContent = dict.tasksEmpty;
           tasksEmpty.classList.remove('hidden');
           tasksTableWrap.classList.add('hidden');
           tasksBody.innerHTML = '';
@@ -1098,11 +1484,11 @@
           tasksTableWrap.classList.remove('hidden');
 
           const statusMap = {
-            queued: '排队中',
-            running: '运行中',
-            completed: '已完成',
-            failed: '失败',
-            unknown: '未知'
+            queued: dict.statusQueued,
+            running: dict.statusRunning,
+            completed: dict.statusCompleted,
+            failed: dict.statusFailed,
+            unknown: dict.statusUnknown
           };
 
           let rowsHtml = '';
@@ -1115,10 +1501,10 @@
             const hasInput = (inputVal !== undefined && inputVal !== null);
             const hasOutput = (outputVal !== undefined && outputVal !== null);
 
-            let usageText = '未提供';
+            let usageText = dict.tokensMissing;
             if (hasInput || hasOutput) {
-              const inp = hasInput ? Number(inputVal).toLocaleString() : '未提供';
-              const out = hasOutput ? Number(outputVal).toLocaleString() : '未提供';
+              const inp = hasInput ? Number(inputVal).toLocaleString() : dict.tokensMissing;
+              const out = hasOutput ? Number(outputVal).toLocaleString() : dict.tokensMissing;
               usageText = `${inp} / ${out}`;
             }
 
@@ -1128,7 +1514,7 @@
                 <td>${escapeHtml(t.model || '-')}</td>
                 <td><span class="status-tag ${statusClass}">${escapeHtml(statusLabel)}</span></td>
                 <td>${escapeHtml(usageText)}</td>
-                <td>${escapeHtml(formatShanghaiTime(t.createdAt || t.updatedAt))}</td>
+                <td>${escapeHtml(formatShanghaiTime(t.createdAt || t.updatedAt, currentLang))}</td>
               </tr>
             `;
           }
@@ -1154,16 +1540,49 @@
           if (disposed) return;
 
           if (res && res.isError) {
-            const errText = res.content?.[0]?.text || '获取配额失败';
-            showError(errText);
+            const rawDetail = res.content?.[0]?.text || null;
+            showError({
+              type: 'tool_failed',
+              detail: rawDetail,
+              format: (dict) => rawDetail || dict.errToolFailed
+            });
           } else if (res && res.structuredContent) {
-            renderStatus(res.structuredContent);
+            renderStatus(res.structuredContent, true);
           } else if (res && res.content) {
-            showError('工具返回内容缺少 structuredContent');
+            showError({
+              type: 'tool_missing_structured',
+              format: (dict) => dict.errToolMissingStructured
+            });
           }
         } catch (err) {
           if (disposed) return;
-          showError(err.message || '查询失败');
+          if (err?.code === 'TIMEOUT' || err?.rpcMethod) {
+            const m = err.rpcMethod || 'tools/call';
+            const ms = err.timeoutMs || 35000;
+            showError({
+              type: 'query_timeout',
+              method: m,
+              timeoutMs: ms,
+              format: (dict) => dict.errTimeout(m, ms)
+            });
+          } else if (err?.code === 'NOT_IN_IFRAME' || err?.message === I18N['zh-CN'].errNotInIframe || err?.message === I18N['en'].errNotInIframe) {
+            showError({
+              type: 'not_in_iframe',
+              format: (dict) => dict.errNotInIframe
+            });
+          } else if (!err?.message || err.message === I18N['zh-CN'].errQueryFailed || err.message === I18N['en'].errQueryFailed) {
+            showError({
+              type: 'query_fallback',
+              format: (dict) => dict.errQueryFailed
+            });
+          } else {
+            const rawMsg = err.message;
+            showError({
+              type: 'query_raw',
+              detail: rawMsg,
+              format: () => rawMsg
+            });
+          }
         } finally {
           if (!disposed) {
             inFlight = false;
@@ -1222,24 +1641,28 @@
         countdownTimer = setInterval(() => {
           if (disposed) return;
           const items = document.querySelectorAll('.quota-item[data-resets-at]');
-          items.forEach(el => {
-            const resetsAt = el.getAttribute('data-resets-at');
-            const countdownEl = el.querySelector('.countdown-text');
-            if (resetsAt && countdownEl) {
-              const info = getCountdownInfo(resetsAt);
-              countdownEl.textContent = info.text;
-              if (info.isPassed) {
-                countdownEl.classList.add('is-passed');
-              } else {
-                countdownEl.classList.remove('is-passed');
+          if (items && typeof items.forEach === 'function') {
+            items.forEach(el => {
+              const resetsAt = el.getAttribute ? el.getAttribute('data-resets-at') : null;
+              const countdownEl = el.querySelector ? el.querySelector('.countdown-text') : null;
+              if (resetsAt && countdownEl) {
+                const info = getCountdownInfo(resetsAt, currentLang);
+                countdownEl.textContent = info.text;
+                if (info.isPassed) {
+                  if (countdownEl.classList && countdownEl.classList.add) countdownEl.classList.add('is-passed');
+                } else {
+                  if (countdownEl.classList && countdownEl.classList.remove) countdownEl.classList.remove('is-passed');
+                }
               }
-            }
-          });
+            });
+          }
 
           // Check local staleness
           if (lastKnownStatus && lastKnownStatus.usage?.updatedAt) {
             const isOld = Date.now() - new Date(lastKnownStatus.usage.updatedAt).getTime() > 120000;
+            const dict = I18N[currentLang] || I18N['zh-CN'];
             if (isOld || lastKnownStatus.usage.stale) {
+              staleBadge.textContent = dict.staleBadge;
               staleBadge.classList.remove('hidden');
             } else {
               staleBadge.classList.add('hidden');
@@ -1352,9 +1775,14 @@
             const toolRes = (params && params.result) ? params.result : params;
             if (toolRes) {
               if (toolRes.isError) {
-                showError(toolRes.content?.[0]?.text || '工具调用报错');
+                const rawDetail = toolRes.content?.[0]?.text || null;
+                showError({
+                  type: 'tool_call_error',
+                  detail: rawDetail,
+                  format: (dict) => rawDetail || dict.errToolCallError
+                });
               } else if (toolRes.structuredContent) {
-                renderStatus(toolRes.structuredContent);
+                renderStatus(toolRes.structuredContent, true);
               }
             }
             return;
@@ -1404,6 +1832,14 @@
         }
       });
 
+      if (langSelect) {
+        langSelect.addEventListener('change', (e) => {
+          if (e && e.target && e.target.value) {
+            setLanguage(e.target.value);
+          }
+        });
+      }
+
       // Pause while hidden
       document.addEventListener('visibilitychange', () => {
         if (disposed || !isInitialized) return;
@@ -1438,7 +1874,7 @@
             protocolVersion: '2026-01-26',
             appInfo: {
               name: 'agy-usage-panel',
-              version: '1.1.0'
+              version: '1.2.0'
             },
             appCapabilities: {}
           }, 15000);
@@ -1457,9 +1893,39 @@
           startPolling();
         } catch (err) {
           if (disposed) return;
-          showError('宿主界面连接失败: ' + (err.message || '超时或未在支持的环境中运行'));
+          if (err?.code === 'TIMEOUT' || err?.rpcMethod) {
+            const m = err.rpcMethod || 'ui/initialize';
+            const ms = err.timeoutMs || 15000;
+            showError({
+              type: 'host_init_timeout',
+              method: m,
+              timeoutMs: ms,
+              format: (dict) => `${dict.errHostConnect}${dict.errTimeout(m, ms)}`
+            });
+          } else if (err?.code === 'NOT_IN_IFRAME' || err?.message === I18N['zh-CN'].errNotInIframe || err?.message === I18N['en'].errNotInIframe) {
+            showError({
+              type: 'host_init_not_in_iframe',
+              format: (dict) => `${dict.errHostConnect}${dict.errNotInIframe}`
+            });
+          } else if (!err?.message || err?.message === I18N['zh-CN'].errHostTimeout || err?.message === I18N['en'].errHostTimeout) {
+            showError({
+              type: 'host_init_fallback',
+              format: (dict) => `${dict.errHostConnect}${dict.errHostTimeout}`
+            });
+          } else {
+            const rawMsg = err.message;
+            showError({
+              type: 'host_init_raw',
+              detail: rawMsg,
+              format: (dict) => `${dict.errHostConnect}${rawMsg}`
+            });
+          }
         }
       }
+
+      // Bootstrap language before bridge
+      currentLang = resolveInitialLanguage();
+      setLanguage(currentLang);
 
       initializeBridge();
     })();
