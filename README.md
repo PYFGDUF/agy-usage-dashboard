@@ -2,6 +2,8 @@
   <img src="./assets/readme/hero.svg" width="100%" alt="AGY Usage Dashboard — Antigravity 配额，直接看在 Codex 里">
 </p>
 
+**简体中文** · [English](README.en.md)
+
 **在 Codex 原生面板中查看 Antigravity 配额、重置时间和 Supervisor 任务记录。**
 
 无需切换到外部网页。配额来自本地 `agy /usage` 指令，界面跟随宿主深浅主题，Token 统计只显示上游实际提供的数值。
