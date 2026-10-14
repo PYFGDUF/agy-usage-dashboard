@@ -91,6 +91,8 @@ description: Antigravity 配额查询、原生 GUI 面板展示与 Supervisor �
   const input = bridgeUsage.input_tokens ?? bridgeUsage.inputTokens;
   const output = bridgeUsage.output_tokens ?? bridgeUsage.outputTokens;
   ```
+- **异步桥接结果解包**：修复版 `agy_status` 在任务结果顶层提供 `usage`。若 MCP 包装为 `structuredContent.result` JSON 字符串，应先解析该字符串；没有结构化结果时再解析 `content` 中的 JSON 文本。只读取桥接结果顶层（或明确的 `task` 对象）的真实指标，不能把模型回复 `response` / `text` 中的示例数字当作用量。
+- **任务结束时必须转发**：检查 `completed` 或 `failed` 等终态返回的真实 `usage`，逐项映射为 `inputTokens` / `outputTokens` 后传入 `agy_supervisor_event`。即使任务失败，有真实计数也应保留；运行中暂未返回计数时保持缺失。若旧版异步桥接始终不返回计数，参阅 [桥接器修复补丁](../../integrations/agy-bridge/README.md)，不要用估算值替代。
 - **保留确切数值**：
   保持上游返回的真实整数值，切勿四舍五入或截断。
 

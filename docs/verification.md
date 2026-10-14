@@ -93,3 +93,13 @@ User explicitly replied “已打开，能看到配额” after the1.1.0 native 
 - Protocol reference: https://apps.extensions.modelcontextprotocol.io/api/interfaces/types.McpUiHostContext.html . The locale field is optional; this does not establish that every Codex version emits its selected UI language.
 - Final verification: 61 tests passed, zero failures, plus stdio MCP smoke. Browser-rendered native-component checks at 360px/1000px in light/dark themes simulated differing browser/host locales, live host updates, manual overrides, persisted auto mode, and missing locale; no document overflow or runtime errors. Actual current Codex-shell locale emission has not been directly observed.
 - Installed 1.3.0 from the local marketplace and verified the cached panel hash equals reviewed source. Reopen the panel or restart Codex to load the new resource.
+
+
+## 2026-10-14 — Async bridge Token telemetry fix
+
+- Root cause: older AGY Bridge asynchronous jobs requested text output and returned no exact counters. The dashboard correctly retained empty usage.
+- AGY implemented a bounded patch in an isolated public-source snapshot inside the previously authorized plugin worktree. Boundary checks confirmed no existing plugin files were changed by AGY. Codex tightened envelope recognition and diagnostic detection to prevent fabricated JSON metrics and false failures from prose mentioning authentication/permission tests.
+- Reviewed patch applied to the live editable bridge on local branch `codex/async-token-metrics`, local commit `561491e`. No push to the upstream bridge repository was performed. Existing MCP processes must be restarted to load it.
+- Bridge verification: 74 Python tests passed in the live source. The exported patch was also applied to a clean archive of upstream d01160d and reproduced 74 passing tests.
+- A fresh stdio MCP process ran a real read-only asynchronous task: `bridge-token-proof-20261014`, reply `AGY_TOKEN_OK`, input 12,364 / output 239. These CLI telemetry values were forwarded unchanged to the active local dashboard; subsequent GET /api/status confirmed the same stored counters. This verifies a new task, not recovery of old task counts.
+- Supplemental Apache-2.0 patch, upstream license and notice are in `integrations/agy-bridge/`. Reporting instructions were refreshed in the installed 1.3.0 plugin skill. The implementation job itself started under the old bridge and returned no telemetry, so its missing counters were not fabricated.

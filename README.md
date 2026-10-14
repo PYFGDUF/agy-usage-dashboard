@@ -101,6 +101,8 @@ codex mcp add agy-usage -- "<Node绝对路径>" "<项目绝对路径>/src/mcp/se
 
 使用 [AGY Supervisor](https://github.com/crazyzhang277/codex-antigravity-bridge) 时，应从工具的结构化结果或 JSON 文本中提取真实 `usage` 后上报。部分异步桥接结果没有计数，此时应省略 `usage`；“未提供”不等于 `0`，历史缺失值也无法凭空恢复。详见 [agy-usage 技能](skills/agy-usage/SKILL.md)。
 
+若旧版 AGY Bridge 的异步任务始终显示“未提供”，可查看经过真实任务验证的 [桥接器修复补丁与说明](integrations/agy-bridge/README.md)。
+
 ## MCP 工具
 
 | 工具 | 用途 |
@@ -131,3 +133,5 @@ npm run verify
 ## License
 
 [MIT](LICENSE) © 2026 彭宇峰。
+
+可选的 AGY Bridge 补丁使用 [Apache-2.0](integrations/agy-bridge/LICENSE)。

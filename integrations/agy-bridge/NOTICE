@@ -1,0 +1,5 @@
+This optional patch modifies Codex AGY Supervisor / codex-antigravity-bridge.
+Upstream: https://github.com/crazyzhang277/codex-antigravity-bridge
+Base revision: d01160dbe45b04f32433b4ddf9549b1608d950b5
+The upstream source and this supplemental patch are distributed under Apache-2.0; see LICENSE.
+Modifications: request JSON telemetry for asynchronous jobs, expose exact token metrics, propagate collaboration metrics, and add regression tests.

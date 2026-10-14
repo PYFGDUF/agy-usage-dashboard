@@ -101,6 +101,8 @@ These numbers illustrate the reporting format only. The API accepts both `inputT
 
 When using [AGY Supervisor](https://github.com/crazyzhang277/codex-antigravity-bridge), extract the actual `usage` from the tool's structured result or JSON text before reporting it. Some asynchronous bridge results contain no counts; omit `usage` in that case. “Not provided” does not mean `0`, and missing historical values cannot be reconstructed without a recorded source. See the [agy-usage skill](skills/agy-usage/SKILL.md) for details (in Chinese).
 
+If asynchronous tasks from an older AGY Bridge always show “Not provided”, see the optional [bridge patch and instructions](integrations/agy-bridge/README.md), verified with a real task.
+
 ## MCP tools
 
 | Tool | Purpose |
@@ -131,3 +133,5 @@ Source entry points: embedded component [panel.html](src/ui/panel.html) · MCP [
 ## License
 
 [MIT](LICENSE) © 2026 彭宇峰 (Peng Yufeng).
+
+The optional AGY Bridge patch uses [Apache-2.0](integrations/agy-bridge/LICENSE).
