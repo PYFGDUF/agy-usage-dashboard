@@ -508,9 +508,9 @@ describe('UI Bilingual i18n & Acceptance Tests', () => {
       assert.ok(quotaZh.includes('CST'));
 
       const tableZh = h.el('tasks-body').innerHTML;
-      assert.ok(tableZh.includes('<td>0 / 0</td>'));
-      assert.ok(tableZh.includes('<td>2,500 / 未提供</td>'));
-      assert.ok(tableZh.includes('<td>未提供</td>'));
+      assert.ok(/<td\b[^>]*>0 \/ 0<\/td>/.test(tableZh));
+      assert.ok(/<td\b[^>]*>2,500 \/ 未提供<\/td>/.test(tableZh));
+      assert.ok(/<td\b[^>]*>未提供<\/td>/.test(tableZh));
       assert.ok(tableZh.includes('已完成'));
       assert.ok(tableZh.includes('运行中'));
       assert.ok(tableZh.includes('失败'));
@@ -545,9 +545,9 @@ describe('UI Bilingual i18n & Acceptance Tests', () => {
 
       // Check English tasks table
       const tableEn = h.el('tasks-body').innerHTML;
-      assert.ok(tableEn.includes('<td>0 / 0</td>'), 'Exact zero preserved');
-      assert.ok(tableEn.includes('<td>2,500 / Not provided</td>'), 'Partial token displays Not provided');
-      assert.ok(tableEn.includes('<td>Not provided</td>'), 'Missing token displays Not provided');
+      assert.ok(/<td\b[^>]*>0 \/ 0<\/td>/.test(tableEn), 'Exact zero preserved');
+      assert.ok(/<td\b[^>]*>2,500 \/ Not provided<\/td>/.test(tableEn), 'Partial token displays Not provided');
+      assert.ok(/<td\b[^>]*>Not provided<\/td>/.test(tableEn), 'Missing token displays Not provided');
       assert.ok(tableEn.includes('Completed'));
       assert.ok(tableEn.includes('Running'));
       assert.ok(tableEn.includes('Failed'));

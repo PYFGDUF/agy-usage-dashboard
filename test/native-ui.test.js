@@ -361,7 +361,7 @@ describe('Runtime Bridge node:vm Regression Tests', () => {
       method: 'ui/notifications/tool-result',
       params: { structuredContent: h.status(0), content: [] }
     });
-    assert.ok(h.el('quota-grid').innerHTML.includes('>0%</span>'), '0% quota window must be rendered');
+    assert.ok(/\b0%/.test(h.el('quota-grid').innerHTML.replace(/<[^>]*>/g, '')), '0% quota window must be rendered');
     assert.ok(h.el('quota-grid').innerHTML.includes('剩余 0%'), 'progressbar aria-label should indicate 0%');
 
     // Host sends tool-result notification with isError: true
@@ -412,7 +412,7 @@ describe('Runtime Bridge node:vm Regression Tests', () => {
       method: 'ui/notifications/tool-result',
       params: { structuredContent: h.status(100) }
     });
-    assert.ok(!h.el('quota-grid').innerHTML.includes('>100%</span>'), 'Late data after disposal must be ignored');
+    assert.ok(!/\b100%/.test(h.el('quota-grid').innerHTML.replace(/<[^>]*>/g, '')), 'Late data after disposal must be ignored');
   });
 
   it('handles late initialize response after early teardown without restarting', async () => {
@@ -521,7 +521,7 @@ describe('Runtime Bridge node:vm Regression Tests', () => {
     // First load with normal status
     await h.dispatch({ id: initialToolCall.id, result: { structuredContent: h.status(40) } });
     assert.equal(h.el('error-banner').classList.contains('hidden'), true);
-    assert.ok(h.el('quota-grid').innerHTML.includes('>40%</span>'));
+    assert.ok(/\b40%/.test(h.el('quota-grid').innerHTML.replace(/<[^>]*>/g, '')));
 
     // Host delivers status with connection error
     await h.dispatch({
@@ -531,7 +531,7 @@ describe('Runtime Bridge node:vm Regression Tests', () => {
 
     assert.equal(h.el('error-banner').classList.contains('hidden'), false, 'Error banner must be visible on connection error');
     assert.equal(h.el('error-message').textContent, 'CLI 后台服务离线');
-    assert.ok(h.el('quota-grid').innerHTML.includes('>40%</span>'), 'Cached quota windows must be preserved');
+    assert.ok(/\b40%/.test(h.el('quota-grid').innerHTML.replace(/<[^>]*>/g, '')), 'Cached quota windows must be preserved');
     assert.ok(h.el('conn-badge').classList.contains('badge-error'), 'Connection badge should show error style');
 
     // Next update recovers without connection error
@@ -540,7 +540,7 @@ describe('Runtime Bridge node:vm Regression Tests', () => {
       params: { structuredContent: h.status(50, null) }
     });
     assert.equal(h.el('error-banner').classList.contains('hidden'), true, 'Error banner should be hidden when recovered');
-    assert.ok(h.el('quota-grid').innerHTML.includes('>50%</span>'));
+    assert.ok(/\b50%/.test(h.el('quota-grid').innerHTML.replace(/<[^>]*>/g, '')));
   });
 
   it('renders task tokens with canonical and snake_case exact fields, shows 未提供 when absent, and distinguishes numeric 0', async () => {
@@ -608,13 +608,13 @@ describe('Runtime Bridge node:vm Regression Tests', () => {
     assert.ok(tableHtml.includes('4,500 / 800'), 'Bridge input_tokens/output_tokens must render');
 
     // 3. Numeric zero rendered as '0 / 0' (not '未提供')
-    assert.ok(tableHtml.includes('<td>0 / 0</td>'), 'Exact zero tokens must render as 0 / 0');
+    assert.ok(/<td\b[^>]*>0 \/ 0<\/td>/.test(tableHtml), 'Exact zero tokens must render as 0 / 0');
 
     // 4. Partial zero rendered with 未提供 for absent side
-    assert.ok(tableHtml.includes('<td>0 / 未提供</td>'), 'Partial count must display 0 and 未提供 for absent side');
+    assert.ok(/<td\b[^>]*>0 \/ 未提供<\/td>/.test(tableHtml), 'Partial count must display 0 and 未提供 for absent side');
 
     // 5. Absent counts rendered as '未提供'
-    assert.ok(tableHtml.includes('<td>未提供</td>'), 'Absent usage must display 未提供');
+    assert.ok(/<td\b[^>]*>未提供<\/td>/.test(tableHtml), 'Absent usage must display 未提供');
   });
 
   it('supports instant bilingual language switching without extra network calls, updating lang, titles, countdowns, and token labels', async () => {
@@ -680,9 +680,9 @@ describe('Runtime Bridge node:vm Regression Tests', () => {
 
     // 4. Tasks table in English
     const tableEn = h.el('tasks-body').innerHTML;
-    assert.ok(tableEn.includes('<td>0 / 0</td>'), 'Exact zero should still be 0 / 0');
-    assert.ok(tableEn.includes('<td>500 / Not provided</td>'), 'Partial token should show Not provided');
-    assert.ok(tableEn.includes('<td>Not provided</td>'), 'Missing token should show Not provided');
+    assert.ok(/<td\b[^>]*>0 \/ 0<\/td>/.test(tableEn), 'Exact zero should still be 0 / 0');
+    assert.ok(/<td\b[^>]*>500 \/ Not provided<\/td>/.test(tableEn), 'Partial token should show Not provided');
+    assert.ok(/<td\b[^>]*>Not provided<\/td>/.test(tableEn), 'Missing token should show Not provided');
     assert.ok(tableEn.includes('Completed'), 'Status should be translated to Completed');
     assert.ok(tableEn.includes('Running'), 'Status should be translated to Running');
     assert.ok(tableEn.includes('Queued'), 'Status should be translated to Queued');

@@ -103,3 +103,30 @@ User explicitly replied “已打开，能看到配额” after the1.1.0 native 
 - Bridge verification: 74 Python tests passed in the live source. The exported patch was also applied to a clean archive of upstream d01160d and reproduced 74 passing tests.
 - A fresh stdio MCP process ran a real read-only asynchronous task: `bridge-token-proof-20261014`, reply `AGY_TOKEN_OK`, input 12,364 / output 239. These CLI telemetry values were forwarded unchanged to the active local dashboard; subsequent GET /api/status confirmed the same stored counters. This verifies a new task, not recovery of old task counts.
 - Supplemental Apache-2.0 patch, upstream license and notice are in `integrations/agy-bridge/`. Reporting instructions were refreshed in the installed 1.3.0 plugin skill. The implementation job itself started under the old bridge and returned no telemetry, so its missing counters were not fabricated.
+
+
+## 2026-10-15 — Native panel visual refinement, version 1.3.1
+
+- Refined the native MCP Apps panel with graphite/warm-white surfaces, restrained champagne accents, larger quota values, quieter progress bars, a compact toolbar, and responsive task records. Added explicit section/table labels, a keyboard-focusable scrolling task region, reduced-motion handling and stronger light-theme text contrast.
+- Updated existing UI assertions to tolerate styled percent units and translated responsive cell labels, preserving zero quota, zero/missing token, cached data and language-switch coverage.
+- `npm run verify`: 61 tests passed; dependency/manifest checks and stdio MCP smoke test passed. `git diff --check` passed.
+- Isolated Chromium MCP Apps host preview: 12 combinations of 320/420/1000px, light/dark, Chinese/English passed, with no document overflow or page errors. Exercised refresh, auto-sync toggle, manual/automatic language selection, long task IDs, 0%/20% alerts, stale/error/dismissal and empty states. These checks exercise the actual panel resource inside a simulated host; they do not establish rendering inside a freshly restarted Codex desktop shell.
+- Installed 1.3.1 through the existing local marketplace and compared cached UI/version files byte-for-byte with reviewed source. Reopen the native panel; restart Codex if the previous resource remains cached.
+- Screenshots, render results and logs remain local under ignored `artifacts/ui-refinement-20261015/`.
+
+
+## 2026-10-15 — Same-style UI polish, version 1.3.2
+
+- Preserved every light/dark palette token from 1.3.1. Reduced duplicated quota divider spacing, prioritized reset countdowns, aligned exact reset dates inline where space permits, and gave narrow card headings a consistent title/subtitle layout. Right-aligned desktop task numbers and dates and added a quiet footer divider.
+- Stabilized the refresh control across English refresh/cooldown labels. At <=360px it becomes an icon button while retaining its accessible label and tooltip. Keyboard focus remains immediate. Forced-colors mode uses a native checkbox.
+- `npm run verify`: 61 tests passed plus stdio MCP smoke checks. Isolated Chromium host preview: 12 width/theme/language combinations passed, including empty/error/stale/0%/20%, long IDs, zero/missing Token counts, refresh/cooldown width, keyboard Tab/Space, forced-colors and reduced-motion checks. Palette comparison and `git diff --check` passed.
+- Installed local 1.3.2; cached native UI and version files match reviewed source. Fresh rendering within the actual Codex shell still requires reopening the panel or restarting Codex when cached. Preview fixtures and evidence remain ignored under `artifacts/ui-polish-20261015/`.
+
+
+## 2026-10-15 — Native panel composition refinement, version 1.3.3
+
+- Preserved existing graphite/warm-white/champagne color tokens. Replaced the quota card's vertical form-like rows with equal metric columns, a light divider, 44px values and 16px percentage units. Grouped language/auto-sync controls into a single settings group and retained the separate refresh action. Added only a restrained inset surface edge.
+- Compact countdown and date text reduces repeated metadata; complete timestamps, timezone and precise countdown descriptions remain in titles and accessible labels. Explicit Token metrics are unchanged. Narrow task lists now flow with the panel rather than clipping inside a 280px scroll area; long IDs use two visual lines and retain full titles.
+- `npm run verify`: 61 tests plus stdio MCP smoke checks passed. Isolated Chromium host: 12 combinations of 320/420/1000px, Chinese/English and dark/light passed; verified equal column widths, aligned progress bars, complete narrow task lists, full reset timestamp availability, keyboard/forced-colors/reduced-motion, refresh/cooldown, 0%/20% warnings and empty/error/stale states. `git diff --check` and palette comparison passed.
+- Independent screenshot/source design review found no blocking issues. This remains simulated-host rendering evidence; actual Codex shell rendering after reopening is not independently established here.
+- Installed local 1.3.3 and verified cached UI/version files match source. Fixtures, screenshots and logs remain ignored under `artifacts/ui-craft-20261015/`.
